@@ -21,7 +21,10 @@ executable fquoter
   main-is:              Main.hs
   -- other-modules:       
   -- other-extensions:    
-  build-depends:        base >=4.6 && <4.7, containers >=0.5 && <0.6, parsec
+  build-depends:        base >=4.6 && <4.7, containers >=0.5 && <0.6
+                        , parsec
+                        , HDBC
+                        , HDBC-sqlite3
   hs-source-dirs:       src
   default-language:     Haskell2010
 
@@ -29,7 +32,10 @@ executable fquoter
 library
     hs-source-dirs:     src
     exposed-modules:    FQuoter.Quote
-    build-depends:      base >=4.6 && <4.7, containers >=0.5 && <0.6, parsec
+    build-depends:      base >=4.6 && <4.7, containers >=0.5 && <0.6
+                       ,parsec
+                       ,HDBC
+                       ,HDBC-sqlite3
 
 -- Test suite
 test-suite Tests
@@ -39,3 +45,5 @@ test-suite Tests
     build-depends:      base >=4.6 && <4.7
                        ,hspec
                        ,fquoter
+                       ,HDBC
+                       ,HDBC-sqlite3
