@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS Author;
 CREATE TABLE Author (
     id_author   INTEGER PRIMARY KEY AUTOINCREMENT,
     first_name  VARCHAR(128),
@@ -5,16 +6,19 @@ CREATE TABLE Author (
     surname     VARCHAR(255)
 );
 
+DROP TABLE IF EXISTS MetadataInfo;
 CREATE TABLE MetadataInfo (
     id_metadataInfo INTEGER PRIMARY KEY AUTOINCREMENT,
     name            VARCHAR(255)
 );
 
+DROP TABLE IF EXISTS Source;
 CREATE TABLE Source (
     id_source       INTEGER PRIMARY KEY AUTOINCREMENT,
     title           VARCHAR(255)
 );
 
+DROP TABLE IF EXISTS Source_Authors;
 CREATE TABLE Source_Authors (
     id_source_author    INTEGER PRIMARY KEY AUTOINCREMENT,
     related_source      INTEGER,
@@ -23,6 +27,7 @@ CREATE TABLE Source_Authors (
     FOREIGN KEY(related_author) REFERENCES Author(id_author)
 );
 
+DROP TABLE IF EXISTS MetadataValue;
 CREATE TABLE MetadataValue (
     id_metadataValue    INTEGER PRIMARY KEY AUTOINCREMENT,
     related_metadata    INTEGER,
@@ -31,6 +36,7 @@ CREATE TABLE MetadataValue (
     FOREIGN KEY(related_source) REFERENCES Source(id_source)
 );
 
+DROP TABLE IF EXISTS Quote;
 CREATE TABLE Quote (
     id_quote            INTEGER PRIMARY KEY AUTOINCREMENT,
     related_source      INTEGER
@@ -39,6 +45,7 @@ CREATE TABLE Quote (
     FOREIGN KEY(related_source) REFERENCES Source(id_source)
 );
 
+DROP TABLE IF EXISTS Quote_Authors;
 CREATE TABLE Quote_Authors (
     id_quote_author     INTEGER PRIMARY KEY AUTOINCREMENT,
     related_quote       INTEGER,
@@ -47,11 +54,13 @@ CREATE TABLE Quote_Authors (
     FOREIGN KEY(related_quote) REFERENCES Quote(id_quote)
 );
 
+DROP TABLE IF EXISTS Tag;
 CREATE TABLE Tag (
     id_tag          INTEGER PRIMARY KEY AUTOINCREMENT,
     name            VARCHAR(127)
 );
 
+DROP TABLE IF EXISTS Quote_Tags;
 CREATE TABLE Quote_Tags(
     id_quote_tags       INTEGER PRIMARY KEY AUTOINCREMENT,
     related_quote       INTEGER,
@@ -59,4 +68,3 @@ CREATE TABLE Quote_Tags(
     FOREIGN KEY(related_tag) REFERENCES Tag(id_tag),
     FOREIGN KEY(related_quote) REFERENCES Quote(id_quote)
 );
-
