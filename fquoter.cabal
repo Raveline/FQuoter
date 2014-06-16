@@ -21,10 +21,12 @@ executable fquoter
   main-is:              Main.hs
   -- other-modules:       
   -- other-extensions:    
-  build-depends:        base >=4.6 && <4.7, containers >=0.5 && <0.6
-                        , parsec
-                        , HDBC
-                        , HDBC-sqlite3
+  build-depends:        base >=4.6 && <4.7
+                       ,containers >=0.5 && <0.6
+                       ,parsec
+                       ,HDBC
+                       ,HDBC-sqlite3
+                       ,split
   hs-source-dirs:       src
   default-language:     Haskell2010
 
@@ -32,11 +34,12 @@ executable fquoter
 library
     hs-source-dirs:     src
     exposed-modules:    FQuoter.Quote
+                       ,FQuoter.Serialize
     build-depends:      base >=4.6 && <4.7, containers >=0.5 && <0.6
                        ,parsec
                        ,HDBC
                        ,HDBC-sqlite3
-
+                       ,split
 -- Test suite
 test-suite Tests
     hs-source-dirs:     testsuite
@@ -47,3 +50,4 @@ test-suite Tests
                        ,fquoter
                        ,HDBC
                        ,HDBC-sqlite3
+                       ,directory
