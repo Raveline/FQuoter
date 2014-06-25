@@ -27,6 +27,7 @@ executable fquoter
                        ,HDBC
                        ,HDBC-sqlite3
                        ,split
+                       ,free
   hs-source-dirs:       src
   default-language:     Haskell2010
 
@@ -40,6 +41,7 @@ library
                        ,HDBC
                        ,HDBC-sqlite3
                        ,split
+                       ,free
 -- Test suite
 test-suite Tests
     hs-source-dirs:     testsuite
@@ -51,3 +53,4 @@ test-suite Tests
                        ,HDBC
                        ,HDBC-sqlite3
                        ,directory
+                       ,free
