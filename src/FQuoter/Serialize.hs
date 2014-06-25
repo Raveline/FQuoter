@@ -132,7 +132,7 @@ runInsert :: (IConnection c, SqliteSerializable a) => c -> Query -> a -> IO Inte
 runInsert conn query = run conn query . sqlize
 
 runAssociate :: (IConnection c) => c -> Query -> [Integer] -> IO Integer
-runAssociate conn query = run conn query . map toSql
+runAssociate conn query = run conn query . ((:)SqlNull) . map toSql
 
 runLookup :: (IConnection c
              , SqliteSerializable a) => c
