@@ -24,12 +24,20 @@ qAssociateMetadata = "INSERT INTO MetadataValue VALUES (?,?,?)"
 qFindAuthor = "SELECT * FROM Author \
             \WHERE first_name || \" \" || last_name like ? \
             \OR surname like ?"
+qReadAuthor = "SELECT * FROM Author WHERE id_author = ?"
 qFindMetadata = "SELECT * FROM MetadataInfo WHERE  name like ?"
 
 qUpdateAuthor = "UPDATE author SET first_name = ?, last_name = ?, surname = ? WHERE id_author = ?"
 
 qDeleteAuthor = "DELETE FROM Author id_author = ?"
 --- UTITILITES
+
+data SerializedType 
+    = SAuthor Author
+    | SSource Source
+    | SQuote Quote
+    | SMetadataInfo MetadataInfo
+    | SMetadataDictionary MetadataDictionary
 
 -- Make a Sqlvalue out of a Maybe String.
 -- Nothing will be turned into an empty string
@@ -85,33 +93,29 @@ instance SqliteSerializable QuoterString where
     sqlize s = [SqlNull, toSql (string s)]
     unsqlize (pkey:s:[]) = DBValue (fromSql pkey) (QuoterString(fromSql s))
 
-data SerializationF a next
-    = Insert Query a next                       -- Create
-    | Lookup Query String ([DBValue a] -> next) -- Read
-    | Update Query a next                       -- Update
-    | Delete Query a next                       -- Delete
-    | Associate Query [Integer] next            -- For many-to-many tables
-    | LastInsert (Integer -> next)              -- Get last insert id
+data SearchTerm 
+    = ById Integer
+    | ByName String
+
+data SerializationF next
+    = Create SerializedType next
+    | Search SearchTerm (SerializedType -> next)
+    | LastInsert (Integer -> next)
+    | Update Integer SerializedType next
+    | Delete SerializedType next
 
 instance Functor (SerializationF a) where
-    -- fmap = (a -> b) -> f a -> f b
-    fmap f (Insert q item n) = Insert q item (f n)
-    fmap f (Lookup q search n) = Lookup q search (f . n)
+    fmap f (Create t q item n) = Create q item (f n)
+    fmap f (Search term n) = Search term (f . n)
     fmap f (LastInsert n) = LastInsert (f . n)
 
 type Serialization a = Free (SerializationF a)
 
-insert :: (SqliteSerializable a) => Query -> a -> Serialization a ()
-insert q a = liftF $ Insert q a ()
+create :: SerializedType -> Serialization ()
+create = liftF $ Create
 
-lookUp :: (SqliteSerializable a) => Query -> String -> Serialization a [DBValue a]
-lookUp q str = liftF $ Lookup q str $ id
-
-lastInsert :: Serialization a Integer
-lastInsert = liftF $ LastInsert id
-
-associate :: Query -> [Integer] -> Serialization a ()
-associate q ids = liftF $ Associate q ids ()
+search :: String -> Serialization SerializedType
+search s = liftF $ Search s $ id
 
 -- update :: (SqliteSerializable a) => Query -> a -> Serialization ()
 -- update = liftF $ Update
@@ -121,11 +125,12 @@ associate q ids = liftF $ Associate q ids ()
 
 process :: (IConnection c, SqliteSerializable a) => c -> Serialization a r -> IO r
 process _ (Pure r) = return r
-process conn (Free (Insert q o n)) = runInsert conn q o >> process conn n
-process conn (Free (Lookup q l n)) = 
-    runLookup conn q (searchArray q l) >>= process conn . n
-process conn (Free (LastInsert n)) = queryLastInsert conn >>= process conn . n
-process conn (Free (Associate q ids n)) = runAssociate conn q ids >> process conn n
+process conn (Free (Create (SAuthor a) n)) = runInsert conn qInsertAuthor (sqlize a) >> process conn n
+process conn (Free (Create (SSource s) n)) = runInsert conn qInsertSource (sqlize s) >> process conn n
+process conn (Free (Create (SMetadataInfo s) n)) = runInsert conn qInsertMetadata (sqlize s) >> process conn n
+-- process conn (Free (Lookup s)) = runLookup conn q (searchArray q l) >>= process conn . n
+-- process conn (Free (LastInsert n)) = queryLastInsert conn >>= process conn . n
+-- process conn (Free (Associate q ids n)) = runAssociate conn q ids >> process conn n
 
 --- IO methods
 runInsert :: (IConnection c, SqliteSerializable a) => c -> Query -> a -> IO Integer
@@ -152,14 +157,13 @@ queryLastInsert conn = do
 
 
 -- Insertion mechanisms
-
 insertAuthor :: Author -> Serialization Author ()
-insertAuthor = insert qInsertAuthor
+insertAuthor = create
 
 insertSource :: Source -> Serialization Source ()
 insertSource s = 
     do
-        insert qInsertSource s
+        create s
         idSource <- lastInsert 
         -- let dict = (insertMetadatas $ metadata s)
         -- insertMetadatasDict idSource dict
