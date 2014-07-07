@@ -13,7 +13,7 @@ import FQuoter.Quote
 
 data QuoteType
     = TAuthor Author
-    -- | TSource Source
+    | TSource Source
     -- | TQuote Quote
     deriving (Eq, Show)
 
@@ -34,9 +34,14 @@ word = do w <- many1 alphaNum
 
 words' = word `manyTill` endWordChain
 
-endWordChain = (lookAhead (char '\"') >> return ())
-               <|> (lookAhead $ string "aka" >> return ())
+endWordChain = (lookAhead symbols >> return ())
+               <|> (lookAhead keywords >> return ())
                <|> eof
+
+keywords = string "aka"
+          <|> string "by"
+
+symbols = oneOf "(){}\""
 
 specifically s = do w <- string s
                     spaces
