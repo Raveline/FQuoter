@@ -1,11 +1,11 @@
 module FQuoter.SerializeSpec(main, spec) where
 
-import Control.Monad
-
-import System.Directory
 import Test.Hspec
-import FQuoter.Serialize
-import FQuoter.Quote
-import Database.HDBC.Sqlite3
-
 -- todo
+main :: IO()
+main = hspec spec
+
+spec = do
+        describe "nothing" $ do
+            it "Does nothing right now." $ do
+                1 `shouldBe` 1
