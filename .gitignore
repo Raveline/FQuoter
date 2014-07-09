@@ -1,3 +1,4 @@
 *.config
+*.db
 .cabal-sandbox/
 dist/
