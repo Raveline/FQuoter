@@ -36,6 +36,7 @@ library
     hs-source-dirs:     src
     exposed-modules:    FQuoter.Quote
                        ,FQuoter.Serialize.Serialize
+                       ,FQuoter.Parser
     build-depends:      base >=4.6 && <4.7, containers >=0.5 && <0.6
                        ,parsec
                        ,HDBC
