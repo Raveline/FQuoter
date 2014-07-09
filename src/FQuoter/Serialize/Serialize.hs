@@ -1,6 +1,9 @@
 module FQuoter.Serialize.Serialize
 (
-   buildNewDB 
+    Serialization
+    ,process
+    ,buildNewDB
+    ,insertAuthor
 )
 where
 
