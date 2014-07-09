@@ -1,16 +1,26 @@
 import System.Environment
 
-type Command = String
+import FQuoter.Parser
+import FQuoter.Serialize.Serialize
+import Database.HDBC.Sqlite3
 
 main :: IO ()
 main = do
         args <- getArgs 
-        case parseCommand (unwords args) of 
-            Left s -> putStrLn s
+        case parseInput(unwords args) of 
+            Left s -> putStrLn (show s)
             Right c -> executeCommand c
 
-parseCommand :: String -> Either String Command
-parseCommand s = Left "Nothing implemented yet !"
+executeCommand :: Action -> IO ()
+executeCommand (Insert (TAuthor author)) = insertAndDisplay insertAuthor author
+executeCommand _ = putStrLn "Not implemented yet."
 
-executeCommand :: Command -> IO ()
-executeCommand = undefined
+insertAndDisplay :: (Show a) => (a -> Serialization ()) -> a -> IO ()
+insertAndDisplay f a = do
+                        db <- getDB 
+                        process db $ f a
+                        putStrLn $ "Added : " ++ show a
+
+-- Obviously temporary
+getDB :: IO Connection
+getDB = connectSqlite3 "test.db"
