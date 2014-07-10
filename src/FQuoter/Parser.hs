@@ -2,6 +2,7 @@ module FQuoter.Parser
 (
     QuoteType (..),
     Action (..),
+    ParserSource (..),
     parseInput
 )
 where
@@ -11,9 +12,16 @@ import Control.Applicative hiding (many, (<|>))
 
 import FQuoter.Quote hiding (string)
 
+import qualified Data.Map as Map
+
+data ParserSource = ParserSource { title :: String
+                                 , authors :: [String]
+                                 , metadata :: MetadataDictionary }
+                                 deriving (Eq, Show)
+
 data QuoteType
     = TAuthor Author
-    | TSource Source
+    | TSource ParserSource
     -- | TQuote Quote
     deriving (Eq, Show)
 
@@ -28,11 +36,16 @@ command = choice [ insert
                  -- and others
                  ]
 
-word = do w <- many1 alphaNum
+word = do w <- many1 (alphaNum <|> char '\'')
           spaces
           if w == "aka" then fail "Reserved word" else return w
 
-words' = word `manyTill` endWordChain
+words' = spaces >> word `manyTill` endWordChain
+
+simpleString = do
+                w <- words' 
+                return $ unwords w
+                  
 
 endWordChain = (lookAhead symbols >> return ())
                <|> (lookAhead keywords >> return ())
@@ -41,20 +54,20 @@ endWordChain = (lookAhead symbols >> return ())
 keywords = string "aka"
           <|> string "by"
 
-symbols = oneOf "(){}\""
+symbols = oneOf "(){}\":,"
+
+betweenBrackets = between (char '"') (char '"') simpleString
+                    
 
 specifically s = do w <- string s
                     spaces
                     return w
 
-insert  = do
-            specifically "insert"
-            author <- p_author
-            return $ Insert author
+insert  = specifically "insert" >> choice [Insert <$> p_author
+                                          ,Insert <$> p_source]
+
 lookup = undefined
 delete = undefined
-
-p_source = undefined -- TTCT
 
 -- Author parsing
 p_author = do
@@ -71,16 +84,37 @@ authorFullNameOrNick = do name <- words'
                           return $ authorFromStringArray name
 
 authorFullNameAndNick = do name <- words'                      
-                           nickName <- akaPseudonym <|> bracketPseudonym
+                           nickName <- akaPseudonym <|> betweenBrackets
                            return $ Author (Just $ unwords . init $ name) (Just $ last name) (Just nickName)
 
 akaPseudonym = do
                 string "aka"
                 spaces
-                nickName <- word
+                nickName <- simpleString
                 return nickName
 
-bracketPseudonym = between (char '"') (char '"') word
+-- Source parsing
+p_source = do string "source"
+              spaces
+              title <- betweenBrackets
+              spaces
+              string "by"
+              spaces
+              authors <- (betweenBrackets <|> simpleString) `sepBy` (char ',' <* spaces)
+              metadata <- option Map.empty parseMetadata
+              return $ TSource $ ParserSource title authors metadata
+
+parseMetadata = do
+                    elems <- between (char '{' <* spaces)(char '}' <* spaces) variousValues
+                    return $ Map.fromList elems
+
+variousValues = valuePair `sepBy` (char ',' <* spaces)
+
+valuePair = do
+                info <- simpleString
+                char ':' 
+                value <- simpleString
+                return (MetadataInfo . QuoterString $ info, MetadataValue . QuoterString $ value)
 
 parseInput :: String -> Either ParseError Action
 parseInput = parse command "(unknown)" 

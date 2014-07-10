@@ -1,5 +1,6 @@
 module FQuoter.ParserSpec (main, spec) where
 
+import qualified Data.Map as Map
 import Test.Hspec
 import FQuoter.Quote
 import FQuoter.Parser
@@ -13,19 +14,32 @@ insertHomer = Insert $ TAuthor (Author Nothing Nothing (Just "Homer"))
 insertVirgil = Insert $ TAuthor (Author (Just "Vergilius Maro") (Just "Publius") (Just "Virgil"))
 insertTolkien = Insert $ TAuthor (Author (Just "John Ronald Reuel") (Just "Tolkien") Nothing)
 
+tale2cities = "A tale of two cities"
+
+infoStr = MetadataInfo . QuoterString
+valueStr = MetadataValue . QuoterString
+
+noMetadata = Map.empty
+metadata' = Map.fromList[(infoStr "Published date", valueStr "1887")
+                            ,(infoStr "Editor", valueStr "Penguin")]
+
+dickensSearchTerm = ParserSource tale2cities ["Dickens"] noMetadata
+sourceMetadata = ParserSource tale2cities ["Dickens"] metadata'
+sourceMultiauthor = ParserSource "All the President's Men" ["Bob Woodward", "Carl Bernstein"] noMetadata
+
+insertDickensSearchTerm = Insert $ TSource dickensSearchTerm
+insertSourceMetadatas = Insert $ TSource sourceMetadata
+insertMultiauthorSource = Insert $ TSource sourceMultiauthor
+
 parseInput' inp = case parseInput inp of
                     Right x -> x
                     Left n -> error (show n)
 
 -- must pass :
--- insert author "Charles Dickens"
--- insert source "A tale of two cities" by "Charles Dickens"
--- insert source "A tale of two cities" by Dickens
--- insert source "A tale of two cities" by Dickens { Published date : 1887, Editor : Penguin }
 -- insert quote "It was the best of time, it was the worst of time" in A tale of two cities page 2
 -- insert quote "It was the best of time, it was the worst of time" in A tale of two cities page 2 ((Classic, Incipit))
 spec = do
-    describe "Check insertion commands." $ do
+    describe "Check author insertion commands." $ do
         it "Parse a simple author insertion" $ do
             parseInput' "insert author Charles Dickens" `shouldBe` insertCharlesDickens
         it "Parse a insert author with a nickname" $ do
@@ -36,3 +50,12 @@ spec = do
             parseInput' "insert author Vergilius Maro Publius \"Virgil\"" `shouldBe` insertVirgil
         it "Parse a insert author with a double first name and a nickname" $ do
             parseInput' "insert author Vergilius Maro Publius aka Virgil" `shouldBe` insertVirgil
+    describe "Checks sources insertion commands" $ do
+        it "Parse a basic source with no metadata and an author search-term" $ do
+            parseInput' "insert source \"A tale of two cities\" by Dickens" `shouldBe` insertDickensSearchTerm
+        it "Parse a source with two authors" $ do
+            parseInput' "insert source \"All the President's Men\" by Bob Woodward, Carl Bernstein" `shouldBe` insertMultiauthorSource
+        it "Parse a basic source with metadatas and an author search-term" $ do
+            parseInput' "insert source \"A tale of two cities\" by Dickens { Published date : 1887, Editor : Penguin }" `shouldBe` insertSourceMetadatas
+        -- TODO : make sure the anonymous author is recognzied with the all Nothing author
+        -- TODO : make sure a title with a comma can pass
