@@ -4,24 +4,18 @@ module FQuoter.Serialize.Shortcuts
 )
 where
 
+import qualified Data.Map as Map
+import Data.Either
+
 import FQuoter.Serialize.Serialize
 import FQuoter.Serialize.SerializedTypes
 import FQuoter.Parser.ParserTypes
 import FQuoter.Serialize.Queries
 import FQuoter.Quote
-import qualified Data.Map as Map
 
-{-- Return values for validation functions.
-The idea is to check that a string can be matched
-to something in the database.
-e.g. : "Insert "War and Peace" by Tolstoi" will first
-check that "Tolstoi" can be associated to an author in DB. -}
-data Prevalidation a
-    = Good a             -- Validated input
-    | Nonexisting String -- Data does not exist in DB
-    | Ambiguous [String] -- Ambiguous request : many potential data
+type LinkingAttempt = Either DBError Integer
 
-insert :: ParsedType -> Serialization ()
+insert :: ParsedType -> Serialization DBActionResult
 {- Simply insert an author in the DB. -}
 insert a@(PAuthor _) = create a
 {- Insert a source in the DB. This is a three step
@@ -34,20 +28,21 @@ NB: not fully implemented yet.
 insert s@(PSource (ParserSource tit auth meta)) = 
     do create s
        idSource <- lastInsert 
-       authorsId <- validateAuthors auth
-       return $ Map.mapWithKey (insertMetadatas idSource) meta
-       return ()
-
-validateAuthors :: [String] -> Serialization [Integer]
-validateAuthors = mapM validateAuthor
-
-validateAuthor :: String -> Serialization Integer
+       validatedAuthors <- mapM validateAuthor auth
+       case partitionEithers validatedAuthors of
+            ([], good) -> do
+                    -- Do something with good authors
+                    return $ Map.mapWithKey (insertMetadatas idSource) meta
+                    return $ Right "Ok !"
+            ([xs], _) -> return $ Left xs
+       
+validateAuthor :: String -> Serialization LinkingAttempt
 validateAuthor s = do
                     result <- search DBAuthor (ByName s)
-                    case result of
-                        [] -> error "Non existing author."
-                        [dbv] -> return $ primaryKey dbv
-                        _ -> error "Ambiguous case, not handled yet."
+                    return (case result of
+                        [] -> Left $ UnexistingData "Non existing author."
+                        [dbv] -> Right $ primaryKey dbv
+                        res -> Left $ AmbiguousData ("Several potential authors for " ++ s) (map (show . value) res))
 
 {- Insert metadatas. In the Metadata table, insert the value,
 and the primary key to the related Metadata Type and Source. -}

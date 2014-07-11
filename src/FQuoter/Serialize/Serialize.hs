@@ -13,12 +13,19 @@ import FQuoter.Parser.ParserTypes
 import FQuoter.Serialize.SerializedTypes
 import FQuoter.Serialize.Queries
 
+type SuccessMessage = String
+type DBActionResult = Either DBError SuccessMessage
+
+data DBError
+    = UnexistingData String
+    | AmbiguousData String [String]
+    deriving(Eq, Show)
 
 --- UTITILITES
 -- Make a Sqlvalue out of a Maybe String.
 -- Nothing will be turned into an empty string
 data SerializationF next
-    = Create ParsedType next
+    = Create ParsedType (DBActionResult -> next)
     | Associate PairOfKeys next
     | Associate2 PairOfKeys ParsedType next
     | Search DBType SearchTerm ([DBValue SerializedType] -> next)
@@ -27,7 +34,7 @@ data SerializationF next
     | Delete SerializedType next
 
 instance Functor SerializationF where
-    fmap f (Create st n) = Create st (f n)
+    fmap f (Create st n) = Create st (f . n)
     fmap f (Associate pks n) = Associate pks (f n)
     fmap f (Associate2 pks t n) = Associate2 pks t (f n)
     fmap f (Search typ term n) = Search typ term (f . n)
@@ -38,8 +45,8 @@ type Serialization = Free SerializationF
 associate2 :: PairOfKeys -> ParsedType -> Serialization ()
 associate2 pks t = liftF $ Associate2 pks t ()
 
-create :: ParsedType -> Serialization ()
-create t = liftF $ Create t ()
+create :: ParsedType -> Serialization DBActionResult
+create t = liftF $ Create t id
 
 search :: DBType -> SearchTerm -> Serialization [DBValue SerializedType]
 search typ term = liftF $ Search typ term id
@@ -52,21 +59,24 @@ update pk st = liftF $ Update pk st ()
 
 process :: (IConnection c) => c -> Serialization next -> IO next
 process _ (Pure r) = return r
-process conn (Free (Create t n)) = conn <~ t >> process conn n
+process conn (Free (Create t n)) = conn <~ t >>= process conn . n
 process conn (Free (Search t s n)) = conn ~> (t,s) 
                                 >>= mapM (return . unsqlizeST t) 
                                 >>= process conn . n
 process conn (Free (Associate2 pks t n)) = conn <~~ (pks, t) >> process conn n
 process conn (Free (LastInsert n)) = queryLastInsert conn  >>= process conn . n
 
-(<~) :: (IConnection c) => c -> ParsedType -> IO ()
-conn <~ s = void $ run conn (getInsert s) (sqlize s)
+(<~) :: (IConnection c) => c -> ParsedType -> IO DBActionResult
+conn <~ s = run conn (getInsert s) (sqlize s) >> ok s
 
 (~>) :: (IConnection c) => c -> (DBType, SearchTerm) -> IO [[SqlValue]]
 conn ~> (t,st) = uncurry (lookUp conn) (t,st)
 
-(<~~) :: (IConnection c) => c -> (PairOfKeys, ParsedType) -> IO ()
-conn <~~ (p,  t) = void $ run conn (getInsert t) (SqlNull:sqlizePair p)
+(<~~) :: (IConnection c) => c -> (PairOfKeys, ParsedType) -> IO  DBActionResult
+conn <~~ (p,  t) = run conn (getInsert t) (SqlNull:sqlizePair p) >> ok t
+
+ok :: ParsedType -> IO DBActionResult
+ok s = return $ Right $ "Inserted : " ++ (show s)
 
 sqlizePair :: PairOfKeys -> [SqlValue]
 sqlizePair (k1,k2) = [toSql k1, toSql k2]
@@ -113,3 +123,4 @@ readSchema :: FilePath -> IO [String]
 readSchema schemaF = do 
                         content <- readFile schemaF
                         return $ splitOn ";" content
+

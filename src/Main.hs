@@ -3,6 +3,7 @@ import System.Environment
 import FQuoter.Parser.ParserTypes
 import FQuoter.Parser.Parser
 import FQuoter.Serialize.Shortcuts
+import Database.HDBC
 import Database.HDBC.Sqlite3
 import FQuoter.Serialize.SerializedTypes
 import FQuoter.Serialize.Serialize
@@ -25,8 +26,14 @@ insertAndDisplay :: ParsedType -> IO ()
 insertAndDisplay a = do
                         putStrLn $ "Adding... " ++ show a
                         db <- getDB 
-                        process db $ insert a
-                        putStrLn $ "Added : " ++ show a
+                        result <- process db $ insert a
+                        case result of
+                            Left err -> do
+                                            rollback db
+                                            print err
+                            Right ok -> do
+                                            commit db
+                                            putStrLn ok
 
 -- Obviously temporary
 getDB :: IO Connection
