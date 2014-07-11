@@ -2,6 +2,7 @@ module FQuoter.Serialize.SerializedTypes
 where
 
 import FQuoter.Quote
+import FQuoter.Parser.ParserTypes
 import Database.HDBC
 import qualified Data.Map as Map
 
@@ -29,7 +30,6 @@ sqlToMaybeString _ = Nothing
 -- stored those "translated" objects as DBValues, wich will contain
 -- the primary key.
 class SqliteSerializable a where
-    sqlize :: a -> [SqlValue]
     unsqlize :: [SqlValue] -> DBValue a
 
 {- Container for serialized type. Can contain all the basic Quoter types.
@@ -41,6 +41,7 @@ data SerializedType
     | SQuote Quote
     | SMetadataInfo MetadataInfo
     | SMetadataValue MetadataValue
+    deriving(Show)
 
 -- A simple container to hold a data type and
 -- its primary key in the database.
@@ -53,10 +54,6 @@ instance Functor DBValue where
 
 
 instance SqliteSerializable Author where
-    sqlize (Author fName lName sName) = [SqlNull
-                                        ,maybeStringToSql fName
-                                        ,maybeStringToSql lName
-                                        ,maybeStringToSql sName]
     unsqlize (pkey:fName:lName:sName:[]) = DBValue (fromSql pkey) toAuthor
         where
             toAuthor = Author (sqlToMaybeString fName)
@@ -64,33 +61,34 @@ instance SqliteSerializable Author where
                                  (sqlToMaybeString sName)
 
 instance SqliteSerializable Source where
-    sqlize (Source title _ _) = [SqlNull
-                                ,toSql title]
     unsqlize (pkey:title:[]) =  DBValue (fromSql pkey) 
                                 (Source (fromSql title) [] Map.empty)
 
 instance SqliteSerializable QuoterString where
-    sqlize s = [SqlNull, toSql (string s)]
     unsqlize (pkey:s:[]) = DBValue (fromSql pkey) (QuoterString(fromSql s))
 
 instance SqliteSerializable Quote where
-    sqlize = undefined
     unsqlize = undefined
 
 instance SqliteSerializable MetadataInfo where
-    sqlize = sqlize . metaInfo
     unsqlize = fmap MetadataInfo . unsqlize 
 
 instance SqliteSerializable MetadataValue where
-    sqlize = sqlize . metaValue
     unsqlize = fmap MetadataValue . unsqlize
 
-sqlizeST :: SerializedType -> [SqlValue]
-sqlizeST (SAuthor a) = sqlize a
-sqlizeST (SSource s) = sqlize s
-sqlizeST (SQuote q) = sqlize q
-sqlizeST (SMetadataInfo i) = sqlize i
-sqlizeST (SMetadataValue v) = sqlize v
+sqlize :: ParsedType -> [SqlValue]
+sqlize (PAuthor (Author fName lName sName)) = [SqlNull
+                                              ,maybeStringToSql fName
+                                              ,maybeStringToSql lName
+                                              ,maybeStringToSql sName]
+sqlize (PSource (ParserSource title _ _)) =  [SqlNull
+                                             ,toSql title]
+sqlize (PMetadataInfo s) = sqlizeQuoterString s
+sqlize (PMetadataValue v) = sqlizeQuoterString v
+sqlize (PQuote (ParserQuote txt comm _ _)) = undefined
+
+sqlizeQuoterString s = [SqlNull, toSql s]
+
 
 unsqlizeST :: DBType -> [SqlValue] -> DBValue SerializedType
 unsqlizeST (DBAuthor) = fmap SAuthor . unsqlize

@@ -1,6 +1,5 @@
-module FQuoter.Parser 
+module FQuoter.Parser.Parser 
 (
-    QuoteType (..),
     Action (..),
     ParserSource (..),
     parseInput
@@ -11,22 +10,12 @@ import Text.ParserCombinators.Parsec
 import Control.Applicative hiding (many, (<|>))
 
 import FQuoter.Quote hiding (string)
+import FQuoter.Parser.ParserTypes
 
 import qualified Data.Map as Map
 
-data ParserSource = ParserSource { title :: String
-                                 , authors :: [String]
-                                 , metadata :: MetadataDictionary }
-                                 deriving (Eq, Show)
-
-data QuoteType
-    = TAuthor Author
-    | TSource ParserSource
-    -- | TQuote Quote
-    deriving (Eq, Show)
-
 data Action 
-    = Insert QuoteType
+    = Insert ParsedType
     deriving (Eq, Show)
 
 {- A command contains a term (Insert, Search, Delete) and parameters. -}
@@ -73,7 +62,7 @@ delete = undefined
 p_author = do
             specifically "author"
             auth <- try authorFullNameAndNick <|> authorFullNameOrNick
-            return $ TAuthor auth
+            return $ PAuthor auth
 
 authorFromStringArray :: [String] -> Author
 authorFromStringArray s
@@ -102,7 +91,7 @@ p_source = do string "source"
               spaces
               authors <- (betweenBrackets <|> simpleString) `sepBy` (char ',' <* spaces)
               metadata <- option Map.empty parseMetadata
-              return $ TSource $ ParserSource title authors metadata
+              return $ PSource $ ParserSource title authors metadata
 
 parseMetadata = do
                     elems <- between (char '{' <* spaces)(char '}' <* spaces) variousValues
@@ -114,7 +103,7 @@ valuePair = do
                 info <- simpleString
                 char ':' 
                 value <- simpleString
-                return (MetadataInfo . QuoterString $ info, MetadataValue . QuoterString $ value)
+                return (info, value)
 
 parseInput :: String -> Either ParseError Action
 parseInput = parse command "(unknown)" 

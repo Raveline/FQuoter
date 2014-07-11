@@ -1,11 +1,4 @@
-module FQuoter.Serialize.Serialize
-(
-    Serialization
-    ,process
-    ,buildNewDB
-    ,insertAuthor
-)
-where
+module FQuoter.Serialize.Serialize where
 
 import Data.List.Split
 
@@ -13,9 +6,9 @@ import Control.Monad.Free
 import Data.Maybe
 import Database.HDBC
 import Database.HDBC.Sqlite3
-import qualified Data.Map as Map
 
 import FQuoter.Quote
+import FQuoter.Parser.ParserTypes
 import FQuoter.Serialize.SerializedTypes
 import FQuoter.Serialize.Queries
 
@@ -24,9 +17,9 @@ import FQuoter.Serialize.Queries
 -- Make a Sqlvalue out of a Maybe String.
 -- Nothing will be turned into an empty string
 data SerializationF next
-    = Create SerializedType next
+    = Create ParsedType next
     | Associate PairOfKeys next
-    | Associate2 PairOfKeys SerializedType next
+    | Associate2 PairOfKeys ParsedType next
     | Search DBType SearchTerm ([DBValue SerializedType] -> next)
     | LastInsert (PrimaryKey -> next)
     | Update PrimaryKey SerializedType next
@@ -41,10 +34,10 @@ instance Functor SerializationF where
 
 type Serialization = Free (SerializationF)
 
-associate2 :: PairOfKeys -> SerializedType -> Serialization ()
+associate2 :: PairOfKeys -> ParsedType -> Serialization ()
 associate2 pks t = liftF $ Associate2 pks t ()
 
-create :: SerializedType -> Serialization ()
+create :: ParsedType -> Serialization ()
 create t = liftF $ Create t ()
 
 search :: DBType -> SearchTerm -> Serialization ([DBValue SerializedType])
@@ -63,14 +56,15 @@ process conn (Free (Search t s n)) = conn ~> (t,s)
                                 >>= mapM (return . unsqlizeST t) 
                                 >>= process conn . n
 process conn (Free (Associate2 pks t n)) = conn <~~ (pks, t) >> process conn n
+process conn (Free (LastInsert n)) = queryLastInsert conn  >>= process conn . n
 
-(<~) :: (IConnection c) => c -> SerializedType -> IO ()
-conn <~ s = runInsert conn (getInsert s) (sqlizeST s) >> return ()
+(<~) :: (IConnection c) => c -> ParsedType -> IO ()
+conn <~ s = runInsert conn (getInsert s) (sqlize s) >> return ()
 
 (~>) :: (IConnection c) => c -> (DBType, SearchTerm) -> IO [[SqlValue]]
 conn ~> (t,st) = uncurry (lookUp conn) (t,st)
 
-(<~~) :: (IConnection c) => c -> (PairOfKeys, SerializedType) -> IO ()
+(<~~) :: (IConnection c) => c -> (PairOfKeys, ParsedType) -> IO ()
 conn <~~ (p,  t) = runInsert conn (getInsert t) (SqlNull:(sqlizePair p))
                     >> return ()
 
@@ -94,38 +88,8 @@ runAssociate conn query = run conn query . ((:)SqlNull) . map toSql
 -- Get the id of last insertion
 queryLastInsert :: (IConnection c) => c -> IO Integer
 queryLastInsert conn = do
-                    result <- quickQuery' conn "last_insert_rowid()" $ []
+                    result <- quickQuery' conn "select last_insert_rowid()" $ []
                     return $ fromSql . head . head $ result
-
-
--- Insertion mechanisms
-
-insertAuthor :: Author -> Serialization ()
-insertAuthor = create . SAuthor
-
-insertSource :: Source -> Serialization ()
-insertSource s = 
-    do
-        create $ SSource s
-        idSource <- lastInsert 
-        return $ Map.mapWithKey (insertMetadatas idSource) (metadata s)
-        return ()
-
-insertMetadatas :: PrimaryKey -> MetadataInfo -> MetadataValue -> Serialization ()
-insertMetadatas sourceId info value 
-    = do pk <- readOrInsert DBMetadataInfo (metadataInfo info)
-         associate2 (pk, sourceId) (SMetadataValue value)
-         return ()
-                         
-readOrInsert :: DBType -> String -> Serialization PrimaryKey
-readOrInsert typ term = do
-                        result <- search typ (ByName term)
-                        case result of
-                            []  -> do
-                                create $ SMetadataInfo (MetadataInfo $ QuoterString term)
-                                lastInsert
-                            [dbv] -> return $ primary_key dbv
-                            _   -> error "Not handling multiple results."
 
 -- For a given search, put as many "%<search_term>%" as needed by
 -- the query

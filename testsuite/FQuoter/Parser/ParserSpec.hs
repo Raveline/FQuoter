@@ -1,35 +1,33 @@
-module FQuoter.ParserSpec (main, spec) where
+module FQuoter.Parser.ParserSpec (main, spec) where
 
 import qualified Data.Map as Map
 import Test.Hspec
 import FQuoter.Quote
-import FQuoter.Parser
+import FQuoter.Parser.Parser
+import FQuoter.Parser.ParserTypes
 
 
 main :: IO()
 main = hspec spec
 
-insertCharlesDickens = Insert $ TAuthor (Author (Just "Charles") (Just "Dickens") Nothing)
-insertHomer = Insert $ TAuthor (Author Nothing Nothing (Just "Homer"))
-insertVirgil = Insert $ TAuthor (Author (Just "Vergilius Maro") (Just "Publius") (Just "Virgil"))
-insertTolkien = Insert $ TAuthor (Author (Just "John Ronald Reuel") (Just "Tolkien") Nothing)
+insertCharlesDickens = Insert $ PAuthor (Author (Just "Charles") (Just "Dickens") Nothing)
+insertHomer = Insert $ PAuthor (Author Nothing Nothing (Just "Homer"))
+insertVirgil = Insert $ PAuthor (Author (Just "Vergilius Maro") (Just "Publius") (Just "Virgil"))
+insertTolkien = Insert $ PAuthor (Author (Just "John Ronald Reuel") (Just "Tolkien") Nothing)
 
 tale2cities = "A tale of two cities"
 
-infoStr = MetadataInfo . QuoterString
-valueStr = MetadataValue . QuoterString
-
 noMetadata = Map.empty
-metadata' = Map.fromList[(infoStr "Published date", valueStr "1887")
-                            ,(infoStr "Editor", valueStr "Penguin")]
+metadata' = Map.fromList[("Published date", "1887")
+                        ,("Editor", "Penguin")]
 
 dickensSearchTerm = ParserSource tale2cities ["Dickens"] noMetadata
 sourceMetadata = ParserSource tale2cities ["Dickens"] metadata'
 sourceMultiauthor = ParserSource "All the President's Men" ["Bob Woodward", "Carl Bernstein"] noMetadata
 
-insertDickensSearchTerm = Insert $ TSource dickensSearchTerm
-insertSourceMetadatas = Insert $ TSource sourceMetadata
-insertMultiauthorSource = Insert $ TSource sourceMultiauthor
+insertDickensSearchTerm = Insert $ PSource dickensSearchTerm
+insertSourceMetadatas = Insert $ PSource sourceMetadata
+insertMultiauthorSource = Insert $ PSource sourceMultiauthor
 
 parseInput' inp = case parseInput inp of
                     Right x -> x

@@ -1,4 +1,4 @@
-module FQuoter.SerializeSpec(main, spec) where
+module FQuoter.Serialize.SerializeSpec(main, spec) where
 
 import Test.Hspec
 -- todo

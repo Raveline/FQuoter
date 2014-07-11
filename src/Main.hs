@@ -1,8 +1,11 @@
 import System.Environment
 
-import FQuoter.Parser
-import FQuoter.Serialize.Serialize
+import FQuoter.Parser.ParserTypes
+import FQuoter.Parser.Parser
+import FQuoter.Serialize.Shortcuts
 import Database.HDBC.Sqlite3
+import FQuoter.Serialize.SerializedTypes
+import FQuoter.Serialize.Serialize
 
 main :: IO ()
 main = do
@@ -12,13 +15,17 @@ main = do
             Right c -> executeCommand c
 
 executeCommand :: Action -> IO ()
-executeCommand (Insert (TAuthor author)) = insertAndDisplay insertAuthor author
+executeCommand (Insert x) = insertAndDisplay x
 executeCommand _ = putStrLn "Not implemented yet."
 
-insertAndDisplay :: (Show a) => (a -> Serialization ()) -> a -> IO ()
-insertAndDisplay f a = do
+checkNonExisting :: DBType -> [String] -> [SerializedType]
+checkNonExisting typ = undefined -- map (doesExist typ)
+
+insertAndDisplay :: ParsedType -> IO ()
+insertAndDisplay a = do
+                        putStrLn $ "Adding... " ++ show a
                         db <- getDB 
-                        process db $ f a
+                        process db $ insert a
                         putStrLn $ "Added : " ++ show a
 
 -- Obviously temporary

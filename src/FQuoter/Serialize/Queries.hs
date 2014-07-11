@@ -6,6 +6,7 @@ module FQuoter.Serialize.Queries
 )
 where
 
+import FQuoter.Parser.ParserTypes
 import FQuoter.Serialize.SerializedTypes
 
 data QueryType
@@ -16,9 +17,9 @@ data QueryType
 
 getAssociate t = queryFor $ QInsert t
 
-getInsert (SAuthor _) = queryFor (QInsert DBAuthor)
-getInsert (SSource _) = queryFor (QInsert DBSource)
-getInsert (SMetadataInfo _) = queryFor (QInsert DBMetadataInfo)
+getInsert (PAuthor _) = queryFor (QInsert DBAuthor)
+getInsert (PSource _) = queryFor (QInsert DBSource)
+getInsert (PMetadataInfo _) = queryFor (QInsert DBMetadataInfo)
 
 getSearch :: DBType -> SearchTerm -> Query
 getSearch dbt st = queryFor $ QSearch dbt st

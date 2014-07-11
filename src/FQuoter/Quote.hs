@@ -40,3 +40,6 @@ instance Show Author where
 
 instance Show Source where
     show (Source t _ _) = t
+
+instance Show Quote where
+    show (Quote _ c _ _ _) = c
