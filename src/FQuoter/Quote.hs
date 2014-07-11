@@ -16,8 +16,8 @@ type MetadataDictionary = Map.Map MetadataInfo MetadataValue
 
 anonymous = "Anonymous"
 
-data Author = Author { first_name :: Maybe String
-                     , last_name :: Maybe String
+data Author = Author { firstName :: Maybe String
+                     , lastName :: Maybe String
                      , surname :: Maybe String
                      } deriving (Eq)
 
