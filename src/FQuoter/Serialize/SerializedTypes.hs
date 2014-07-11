@@ -45,7 +45,7 @@ data SerializedType
 
 -- A simple container to hold a data type and
 -- its primary key in the database.
-data DBValue a = DBValue { primary_key :: PrimaryKey
+data DBValue a = DBValue { primaryKey :: PrimaryKey
                                      , value :: a
                          }
 
