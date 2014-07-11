@@ -6,6 +6,7 @@ module FQuoter.Parser.Parser
 )
 where
 
+import Control.Monad
 import Text.ParserCombinators.Parsec
 import Control.Applicative hiding (many, (<|>))
 
@@ -21,7 +22,7 @@ data Action
 {- A command contains a term (Insert, Search, Delete) and parameters. -}
 -- command :: GenParser Char st Action
 command = choice [ insert
-                 -- , Insert <$> p_source
+                 -- , Insert <$> pSource
                  -- and others
                  ]
 
@@ -36,8 +37,8 @@ simpleString = do
                 return $ unwords w
                   
 
-endWordChain = (lookAhead symbols >> return ())
-               <|> (lookAhead keywords >> return ())
+endWordChain = void (lookAhead symbols)
+               <|> void (lookAhead keywords)
                <|> eof
 
 keywords = string "aka"
@@ -52,14 +53,14 @@ specifically s = do w <- string s
                     spaces
                     return w
 
-insert  = specifically "insert" >> choice [Insert <$> p_author
-                                          ,Insert <$> p_source]
+insert  = specifically "insert" >> choice [Insert <$> pAuthor
+                                          ,Insert <$> pSource]
 
 lookup = undefined
 delete = undefined
 
 -- Author parsing
-p_author = do
+pAuthor = do
             specifically "author"
             auth <- try authorFullNameAndNick <|> authorFullNameOrNick
             return $ PAuthor auth
@@ -79,19 +80,18 @@ authorFullNameAndNick = do name <- words'
 akaPseudonym = do
                 string "aka"
                 spaces
-                nickName <- simpleString
-                return nickName
+                simpleString
 
 -- Source parsing
-p_source = do string "source"
-              spaces
-              title <- betweenBrackets
-              spaces
-              string "by"
-              spaces
-              authors <- (betweenBrackets <|> simpleString) `sepBy` (char ',' <* spaces)
-              metadata <- option Map.empty parseMetadata
-              return $ PSource $ ParserSource title authors metadata
+pSource = do string "source"
+             spaces
+             title <- betweenBrackets
+             spaces
+             string "by"
+             spaces
+             authors <- (betweenBrackets <|> simpleString) `sepBy` (char ',' <* spaces)
+             metadata <- option Map.empty parseMetadata
+             return $ PSource $ ParserSource title authors metadata
 
 parseMetadata = do
                     elems <- between (char '{' <* spaces)(char '}' <* spaces) variousValues
