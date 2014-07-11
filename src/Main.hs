@@ -11,7 +11,7 @@ main :: IO ()
 main = do
         args <- getArgs 
         case parseInput(unwords args) of 
-            Left s -> putStrLn (show s)
+            Left s -> print s
             Right c -> executeCommand c
 
 executeCommand :: Action -> IO ()
