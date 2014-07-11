@@ -2,6 +2,7 @@ module FQuoter.Serialize.Serialize where
 
 import Data.List.Split
 
+import Control.Monad
 import Control.Monad.Free
 import Data.Maybe
 import Database.HDBC
@@ -32,7 +33,7 @@ instance Functor SerializationF where
     fmap f (Search typ term n) = Search typ term (f . n)
     fmap f (LastInsert n) = LastInsert (f . n)
 
-type Serialization = Free (SerializationF)
+type Serialization = Free SerializationF
 
 associate2 :: PairOfKeys -> ParsedType -> Serialization ()
 associate2 pks t = liftF $ Associate2 pks t ()
@@ -40,11 +41,11 @@ associate2 pks t = liftF $ Associate2 pks t ()
 create :: ParsedType -> Serialization ()
 create t = liftF $ Create t ()
 
-search :: DBType -> SearchTerm -> Serialization ([DBValue SerializedType])
-search typ term = liftF $ Search typ term $ id
+search :: DBType -> SearchTerm -> Serialization [DBValue SerializedType]
+search typ term = liftF $ Search typ term id
 
 lastInsert :: Serialization PrimaryKey
-lastInsert = liftF $ LastInsert $ id
+lastInsert = liftF $ LastInsert id
 
 update :: PrimaryKey -> SerializedType -> Serialization ()
 update pk st = liftF $ Update pk st ()
@@ -59,14 +60,13 @@ process conn (Free (Associate2 pks t n)) = conn <~~ (pks, t) >> process conn n
 process conn (Free (LastInsert n)) = queryLastInsert conn  >>= process conn . n
 
 (<~) :: (IConnection c) => c -> ParsedType -> IO ()
-conn <~ s = runInsert conn (getInsert s) (sqlize s) >> return ()
+conn <~ s = void $ run conn (getInsert s) (sqlize s)
 
 (~>) :: (IConnection c) => c -> (DBType, SearchTerm) -> IO [[SqlValue]]
 conn ~> (t,st) = uncurry (lookUp conn) (t,st)
 
 (<~~) :: (IConnection c) => c -> (PairOfKeys, ParsedType) -> IO ()
-conn <~~ (p,  t) = runInsert conn (getInsert t) (SqlNull:(sqlizePair p))
-                    >> return ()
+conn <~~ (p,  t) = void $ run conn (getInsert t) (SqlNull:sqlizePair p)
 
 sqlizePair :: PairOfKeys -> [SqlValue]
 sqlizePair (k1,k2) = [toSql k1, toSql k2]
@@ -79,16 +79,13 @@ lookUp :: (IConnection c) => c
 lookUp conn t st = quickQuery' conn squery (searchArray squery st)
     where squery = getSearch t st
 
-runInsert :: (IConnection c) => c -> Query -> [SqlValue] -> IO Integer
-runInsert conn query vs = run conn query vs
-
 runAssociate :: (IConnection c) => c -> Query -> [Integer] -> IO Integer
-runAssociate conn query = run conn query . ((:)SqlNull) . map toSql
+runAssociate conn query = run conn query . (:) SqlNull . map toSql
 
 -- Get the id of last insertion
 queryLastInsert :: (IConnection c) => c -> IO Integer
 queryLastInsert conn = do
-                    result <- quickQuery' conn "select last_insert_rowid()" $ []
+                    result <- quickQuery' conn "select last_insert_rowid()" []
                     return $ fromSql . head . head $ result
 
 -- For a given search, put as many "%<search_term>%" as needed by
@@ -96,7 +93,7 @@ queryLastInsert conn = do
 searchArray :: String -> SearchTerm -> [SqlValue]
 searchArray query (ByName search) = replicate (paramNumber query) $ toSql $ "%" ++ search ++ "%"
     where 
-        paramNumber = length . filter ((==) '?')
+        paramNumber = length . filter ('?' ==)
 searchArray query (ById id) = [toSql id]
 
 -- Convert an author to a list of SqlValue for insertion
