@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 module FQuoter.Serialize.Shortcuts
 (
     insert
@@ -5,7 +6,8 @@ module FQuoter.Serialize.Shortcuts
 where
 
 import qualified Data.Map as Map
-import Data.Either
+import Control.Monad.Error
+import Control.Monad.Free
 
 import FQuoter.Serialize.Serialize
 import FQuoter.Serialize.SerializedTypes
@@ -13,11 +15,9 @@ import FQuoter.Parser.ParserTypes
 import FQuoter.Serialize.Queries
 import FQuoter.Quote
 
-type LinkingAttempt = Either DBError Integer
-
-insert :: ParsedType -> Serialization DBActionResult
+insert :: ParsedType -> FalliableSerialization ()
 {- Simply insert an author in the DB. -}
-insert a@(PAuthor _) = create a
+insert a@(PAuthor _) = lift $ create a
 {- Insert a source in the DB. This is a three step
 relation : first, insert the source in the Source table.
 Then insert the link between Authors and the source.
@@ -26,23 +26,20 @@ an error is reported and the process is stopped.
 NB: not fully implemented yet.
  -}
 insert s@(PSource (ParserSource tit auth meta)) = 
-    do create s
-       idSource <- lastInsert 
+    do lift $ create s
+       idSource <- lift $ lastInsert 
        validatedAuthors <- mapM validateAuthor auth
-       case partitionEithers validatedAuthors of
-            ([], good) -> do
-                    -- Do something with good authors
-                    return $ Map.mapWithKey (insertMetadatas idSource) meta
-                    return $ Right "Ok !"
-            ([xs], _) -> return $ Left xs
+       -- Do something with good authors
+       return $ Map.mapWithKey (insertMetadatas idSource) meta
+       return ()
        
-validateAuthor :: String -> Serialization LinkingAttempt
+validateAuthor :: String -> FalliableSerialization Integer
 validateAuthor s = do
-                    result <- search DBAuthor (ByName s)
-                    return (case result of
-                        [] -> Left $ UnexistingData "Non existing author."
-                        [dbv] -> Right $ primaryKey dbv
-                        res -> Left $ AmbiguousData ("Several potential authors for " ++ s) (map (show . value) res))
+                    result <- lift $ search DBAuthor (ByName s)
+                    case result of
+                        [] -> throwError $ NonExistingDataError s
+                        [dbv] -> return $ primaryKey dbv
+                        res -> throwError $ AmbiguousDataError $ (map (show . value) res)
 
 {- Insert metadatas. In the Metadata table, insert the value,
 and the primary key to the related Metadata Type and Source. -}
