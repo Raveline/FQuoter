@@ -26,9 +26,9 @@ insertAndDisplay a = do db <- getDB
                         result <- runExceptT $ process (insert a) db
                         case result of
                             Right _ -> do 
+                                        process (commitAction) db
                                         putStrLn $ "Inserted " ++ (show a)
-                                        return ()
-                            Left e -> displayException e
+                            Left e -> displayException e >> process (rollbackAction) db
 
 displayException :: DBError -> IO ()
 displayException (NonExistingDataError s) = putStrLn $ "The following author does not exist : " ++ s
