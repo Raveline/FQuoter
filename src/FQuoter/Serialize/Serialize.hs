@@ -3,8 +3,8 @@ module FQuoter.Serialize.Serialize where
 import Data.List.Split
 
 import Control.Monad
-import Control.Monad.Free
-import Control.Monad.Error
+import Control.Monad.Trans
+import Control.Monad.Trans.Free
 import Data.Maybe
 import Database.HDBC
 import Database.HDBC.Sqlite3
@@ -13,18 +13,6 @@ import FQuoter.Quote
 import FQuoter.Parser.ParserTypes
 import FQuoter.Serialize.SerializedTypes
 import FQuoter.Serialize.Queries
-
-data DBError = NonExistingDataError String
-             | AmbiguousDataError [String]
-
-instance Show DBError where
-    show (NonExistingDataError s) = s
-    show (AmbiguousDataError s) = "Ambiguous input. Cannot choose between : " ++ unlines s
-
-instance Error DBError where
-    strMsg str = NonExistingDataError str
-
-type FalliableSerialization a = ErrorT DBError Serialization a
 
 --- UTITILITES
 -- Make a Sqlvalue out of a Maybe String.
@@ -49,39 +37,47 @@ instance Functor SerializationF where
     fmap f (CommitAction n) = CommitAction (f n)
     fmap f (RollbackAction n) = RollbackAction (f n)
 
-type Serialization = Free SerializationF 
+type Serialization = FreeT SerializationF 
 
-associate2 :: PairOfKeys -> ParsedType -> Serialization ()
+associate2 :: (Monad m) => PairOfKeys -> ParsedType -> Serialization m ()
 associate2 pks t = liftF $ Associate2 pks t ()
 
-create :: ParsedType -> Serialization ()
+create :: (Monad m) => ParsedType -> Serialization m ()
 create t = liftF $ Create t ()
 
-search :: DBType -> SearchTerm -> Serialization [DBValue SerializedType]
+search :: (Monad m) => DBType -> SearchTerm -> Serialization m [DBValue SerializedType]
 search typ term = liftF $ Search typ term id
 
-lastInsert :: Serialization PrimaryKey
+lastInsert :: (Monad m) => Serialization m PrimaryKey
 lastInsert = liftF $ LastInsert id
 
-update :: PrimaryKey -> SerializedType -> Serialization ()
+update :: (Monad m) => PrimaryKey -> SerializedType -> Serialization m ()
 update pk st = liftF $ Update pk st ()
 
-commitAction :: Serialization ()
+commitAction :: (Monad m) => Serialization m ()
 commitAction = liftF $ CommitAction ()
 
-rollbackAction :: Serialization ()
+rollbackAction :: (Monad m) => Serialization m ()
 rollbackAction = liftF $ RollbackAction ()
 
-process :: (IConnection c) => Serialization next -> c -> IO next
-process (Pure r) _ = return r
-process (Free (Create t n)) c = c <~ t >> process n c
-process (Free (Search t s n)) c = c ~> (t,s) 
-                                >>= mapM (return . unsqlizeST t) 
-                                >>= flip process c . n
-process (Free (Associate2 pks t n)) c = c <~~ (pks, t) >> process n c
-process (Free (LastInsert n)) c = queryLastInsert c >>= flip process c . n
-process (Free (CommitAction n)) c = commit c >> process n c
-process (Free (RollbackAction n)) c = rollback c >> process n c
+process :: (MonadIO m, IConnection c) => Serialization m next -> c -> m next
+process fr c = do
+        v <- runFreeT fr
+        case  v of
+            Pure r -> return r
+            Free (Create t n) -> do liftIO $ c <~ t 
+                                    >> process n c
+            Free (Search t s n) -> do liftIO $ c ~> (t,s) 
+                                      >>= mapM (return . unsqlizeST t) 
+                                      >>= flip process c . n
+            Free (Associate2 pks t n) -> do liftIO $ c <~~ (pks, t) 
+                                            >> process n c
+            Free (LastInsert n) -> do liftIO $ queryLastInsert c 
+                                      >>= flip process c . n
+            Free (CommitAction n) -> do liftIO $ commit c 
+                                        >> process n c
+            Free (RollbackAction n) -> do liftIO $ rollback c 
+                                          >> process n c
 
 (<~) :: (IConnection c) => c -> ParsedType -> IO ()
 conn <~ s = void (run conn (getInsert s) (sqlize s) )
