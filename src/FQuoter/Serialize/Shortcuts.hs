@@ -1,13 +1,15 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses, UndecidableInstances #-}
 module FQuoter.Serialize.Shortcuts
 (
+    DBError (..),
     insert
 )
 where
 
 import qualified Data.Map as Map
-import Control.Monad.Error
-import Control.Monad.Free
+import Control.Monad.Except
+import Control.Monad.Identity
+import Control.Monad.Trans.Free
 
 import FQuoter.Serialize.Serialize
 import FQuoter.Serialize.SerializedTypes
@@ -15,9 +17,24 @@ import FQuoter.Parser.ParserTypes
 import FQuoter.Serialize.Queries
 import FQuoter.Quote
 
-insert :: ParsedType -> FalliableSerialization ()
+data DBError = NonExistingDataError String
+             | AmbiguousDataError [String]
+
+instance Show DBError where
+    show (NonExistingDataError s) = s
+    show (AmbiguousDataError s) = "Ambiguous input. Cannot choose between : " ++ unlines s
+
+-- instance MonadError e m => MonadError e (Serialization m)
+
+type FalliableSerialization m a = FreeT SerializationF (ExceptT DBError m) a
+
+-- type FalliableSerialization' = (Monad m) => FreeT SerializationF (ExceptT DBError m)
+-- type FalliableSerialization a = 
+--    (MonadError DBError FalliableSerialization') => FalliableSerialization' a
+
+insert :: (Monad m) => ParsedType -> FalliableSerialization m ()
 {- Simply insert an author in the DB. -}
-insert a@(PAuthor _) = lift $ create a
+insert a@(PAuthor _) = create a
 {- Insert a source in the DB. This is a three step
 relation : first, insert the source in the Source table.
 Then insert the link between Authors and the source.
@@ -26,31 +43,32 @@ an error is reported and the process is stopped.
 NB: not fully implemented yet.
  -}
 insert s@(PSource (ParserSource tit auth meta)) = 
-    do lift $ create s
-       idSource <- lift $ lastInsert 
+    do create s
+       idSource <- lastInsert 
        validatedAuthors <- mapM validateAuthor auth
        -- Do something with good authors
-       return $ Map.mapWithKey (insertMetadatas idSource) meta
+       mapM (insertMetadatas idSource) (Map.toList meta)
+       -- Map.mapWithKey (insertMetadatas idSource) meta
        return ()
        
-validateAuthor :: String -> FalliableSerialization Integer
+validateAuthor :: (Monad m) => String -> FalliableSerialization m Integer
 validateAuthor s = do
-                    result <- lift $ search DBAuthor (ByName s)
+                    result <- search DBAuthor (ByName s)
                     case result of
                         [] -> throwError $ NonExistingDataError s
                         [dbv] -> return $ primaryKey dbv
-                        res -> throwError $ AmbiguousDataError $ (map (show . value) res)
+                        res -> throwError $ AmbiguousDataError $ map (show . value) res
 
 {- Insert metadatas. In the Metadata table, insert the value,
 and the primary key to the related Metadata Type and Source. -}
-insertMetadatas :: PrimaryKey -> String -> String -> Serialization ()
-insertMetadatas sourceId info value 
+insertMetadatas :: (Monad m) => PrimaryKey -> (String, String) -> FalliableSerialization m ()
+insertMetadatas sourceId (info, value)
     = do pk <- readOrInsert DBMetadataInfo info
          associate2 (pk, sourceId) (PMetadataValue value)
          return ()
 
 {- Currently deficient function - not generalized enough. -}
-readOrInsert :: DBType -> String -> Serialization PrimaryKey
+readOrInsert :: (Monad m) => DBType -> String -> FalliableSerialization m PrimaryKey
 readOrInsert typ term = do
                         result <- search typ (ByName term)
                         case result of
