@@ -24,6 +24,7 @@ executable fquoter
   build-depends:        base >=4.6 && <4.7
                        ,containers >=0.5 && <0.6
                        ,parsec
+                       ,mtl >= 2.2.1
                        ,HDBC
                        ,HDBC-sqlite3
                        ,split
@@ -40,6 +41,7 @@ library
                        ,FQuoter.Parser.ParserTypes
     build-depends:      base >=4.6 && <4.7, containers >=0.5 && <0.6
                        ,parsec
+                       ,mtl >= 2.2.1
                        ,HDBC
                        ,HDBC-sqlite3
                        ,split
