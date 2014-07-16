@@ -32,6 +32,9 @@ type FalliableSerialization m a = FreeT SerializationF (ExceptT DBError m) a
 -- type FalliableSerialization a = 
 --    (MonadError DBError FalliableSerialization') => FalliableSerialization' a
 
+conclude :: (Monad m) => FalliableSerialization m ()
+conclude = commitAction >> return ()
+
 insert :: (Monad m) => ParsedType -> FalliableSerialization m ()
 {- Simply insert an author in the DB. -}
 insert a@(PAuthor _) = create a
@@ -48,7 +51,6 @@ insert s@(PSource (ParserSource tit auth meta)) =
        validatedAuthors <- mapM validateAuthor auth
        -- Do something with good authors
        mapM (insertMetadatas idSource) (Map.toList meta)
-       -- Map.mapWithKey (insertMetadatas idSource) meta
        return ()
        
 validateAuthor :: (Monad m) => String -> FalliableSerialization m Integer
