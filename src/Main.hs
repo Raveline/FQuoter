@@ -2,6 +2,7 @@ import System.Environment
 import Database.HDBC
 import Database.HDBC.Sqlite3
 import Control.Monad.Except
+import Control.Monad.Reader
 
 import FQuoter.Parser.ParserTypes
 import FQuoter.Parser.Parser
@@ -23,12 +24,12 @@ executeCommand _ = putStrLn "Not implemented yet."
 
 insertAndDisplay :: ParsedType -> IO ()
 insertAndDisplay a = do db <- getDB 
-                        result <- runExceptT $ process (insert a) db
+                        result <- runExceptT $ runReaderT (process (insert a)) db
                         case result of
                             Right _ -> do 
-                                        process (commitAction) db
+                                        runReaderT (process commitAction) db
                                         putStrLn $ "Inserted " ++ (show a)
-                            Left e -> displayException e >> process (rollbackAction) db
+                            Left e -> displayException e >> runReaderT (process rollbackAction) db
 
 displayException :: DBError -> IO ()
 displayException (NonExistingDataError s) = putStrLn $ "The following author does not exist : " ++ s

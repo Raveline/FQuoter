@@ -5,6 +5,7 @@ import Data.List.Split
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Trans.Free
+import Control.Monad.Reader
 import Data.Maybe
 import Database.HDBC
 import Database.HDBC.Sqlite3
@@ -37,7 +38,7 @@ instance Functor SerializationF where
     fmap f (CommitAction n) = CommitAction (f n)
     fmap f (RollbackAction n) = RollbackAction (f n)
 
-type Serialization = FreeT SerializationF 
+type Serialization = FreeT SerializationF
 
 associate2 :: (Monad m) => PairOfKeys -> ParsedType -> Serialization m ()
 associate2 pks t = liftF $ Associate2 pks t ()
@@ -60,24 +61,30 @@ commitAction = liftF $ CommitAction ()
 rollbackAction :: (Monad m) => Serialization m ()
 rollbackAction = liftF $ RollbackAction ()
 
-process :: (MonadIO m, IConnection c) => Serialization m next -> c -> m next
-process fr c = do
+process :: (IConnection c, MonadIO m) => Serialization (ReaderT c m) next -> ReaderT c m next
+process fr = do
         v <- runFreeT fr
         case  v of
             Pure r -> return r
-            Free (Create t n) -> do liftIO $ c <~ t 
-                                    >> process n c
-            Free (Search t s n) -> do liftIO $ c ~> (t,s) 
-                                      >>= mapM (return . unsqlizeST t) 
-                                      >>= flip process c . n
-            Free (Associate2 pks t n) -> do liftIO $ c <~~ (pks, t) 
-                                            >> process n c
-            Free (LastInsert n) -> do liftIO $ queryLastInsert c 
-                                      >>= flip process c . n
-            Free (CommitAction n) -> do liftIO $ commit c 
-                                        >> process n c
-            Free (RollbackAction n) -> do liftIO $ rollback c 
-                                          >> process n c
+            Free (Create t n) -> do c <- ask
+                                    liftIO $ c <~ t 
+                                    process n 
+            Free (Search t s n) -> do c <- ask
+                                      v <- liftIO $ c ~> (t,s) 
+                                      v' <- mapM (return . unsqlizeST t) v
+                                      process (n v')
+            Free (Associate2 pks t n) -> do c <- ask
+                                            liftIO $ c <~~ (pks, t)
+                                            process n
+            Free (LastInsert n) -> do c <- ask
+                                      l <- liftIO $ queryLastInsert c 
+                                      process (n l)
+            Free (CommitAction n) -> do c <- ask
+                                        liftIO $ commit c 
+                                        process n
+            Free (RollbackAction n) -> do c <- ask
+                                          liftIO $ rollback c 
+                                          process n
 
 (<~) :: (IConnection c) => c -> ParsedType -> IO ()
 conn <~ s = void (run conn (getInsert s) (sqlize s) )
