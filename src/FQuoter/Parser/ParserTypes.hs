@@ -16,13 +16,14 @@ data ParsedType
     | PQuote ParserQuote
     deriving (Eq, Show)
 
-data ParserSource = ParserSource { ptitle :: String
-                                 , pauthors :: [String]
-                                 , pmetadata :: Map String String }
+data ParserSource = ParserSource { prsTitle :: String
+                                 , prsAuthors :: [String]
+                                 , prsMetadata :: Map String String }
                                  deriving (Eq, Show)
 
-data ParserQuote = ParserQuote { content :: String,
-                                 comment :: String,
-                                 source :: String,
-                                 tags :: [String] }
+data ParserQuote = ParserQuote { prsContent :: String,
+                                 prsSource :: String,
+                                 prsTags :: [String],
+                                 prsLocalization :: Maybe String,
+                                 prsComment :: Maybe String }
                                  deriving (Eq, Show)

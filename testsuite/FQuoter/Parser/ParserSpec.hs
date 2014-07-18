@@ -34,8 +34,20 @@ parseInput' inp = case parseInput inp of
                     Left n -> error (show n)
 
 -- must pass :
--- insert quote "It was the best of time, it was the worst of time" in A tale of two cities page 2
--- insert quote "It was the best of time, it was the worst of time" in A tale of two cities page 2 ((Classic, Incipit))
+ttitle = "A tale of two cities"
+tquote = "It was the best of time, it was the worst of time"
+insertIncipit1 = "insert quote \"" ++ tquote ++ "\" in " ++ ttitle
+insertIncipit2 =  insertIncipit1 ++ " at page 2"
+ttags = "((Classic, Incipit))"
+tcomment = "Come on man, was it the worst or the best ? Make up your mind !"
+insertIncipit3 = insertIncipit1 ++ " " ++ ttags
+insertIncipit4 = insertIncipit1 ++ " [[" ++ tcomment ++ "]]"
+
+correctIncipit1 = Insert $ PQuote $ ParserQuote tquote ttitle [] Nothing Nothing
+correctIncipit2 = Insert $ PQuote $ ParserQuote tquote ttitle [] (Just "page 2") Nothing
+correctIncipit3 = Insert $ PQuote $ ParserQuote tquote ttitle ["Classic", "Incipit"] Nothing Nothing
+correctIncipit4 = Insert $ PQuote $ ParserQuote tquote ttitle [] Nothing (Just tcomment)
+
 spec = do
     describe "Check author insertion commands." $ do
         it "Parse a simple author insertion" $ do
@@ -57,3 +69,12 @@ spec = do
             parseInput' "insert source \"A tale of two cities\" by Dickens { Published date : 1887, Editor : Penguin }" `shouldBe` insertSourceMetadatas
         -- TODO : make sure the anonymous author is recognzied with the all Nothing author
         -- TODO : make sure a title with a comma can pass
+    describe "Checks quote insertion commands" $ do
+        it ("Parse " ++ insertIncipit1) $ do
+            parseInput' insertIncipit1 `shouldBe` correctIncipit1
+        it ("Parse " ++ insertIncipit2) $ do
+            parseInput' insertIncipit2 `shouldBe` correctIncipit2
+        it ("Parse " ++ insertIncipit3) $ do
+            parseInput' insertIncipit3 `shouldBe` correctIncipit3
+        it ("Parse " ++ insertIncipit4) $ do
+            parseInput' insertIncipit4 `shouldBe` correctIncipit4

@@ -10,7 +10,7 @@ import Control.Monad
 import Text.ParserCombinators.Parsec
 import Control.Applicative hiding (many, (<|>))
 
-import FQuoter.Quote hiding (string)
+import FQuoter.Quote hiding (string, Quote(..), content)
 import FQuoter.Parser.ParserTypes
 
 import qualified Data.Map as Map
@@ -28,7 +28,7 @@ command = choice [ insert
 
 word = do w <- many1 (alphaNum <|> char '\'')
           spaces
-          if w == "aka" then fail "Reserved word" else return w
+          return w
 
 words' = spaces >> word `manyTill` endWordChain
 
@@ -41,20 +41,19 @@ endWordChain = void (lookAhead symbols)
                <|> void (lookAhead keywords)
                <|> eof
 
-keywords = string "aka"
-          <|> string "by"
+keywords = try (string "at") <|> string "aka" <|> string "by" <|> string "in"
 
-symbols = oneOf "(){}\":,"
+symbols = oneOf "(){}[]\":,"
 
-betweenBrackets = between (char '"') (char '"') simpleString
-                    
+betweenBrackets = between (char '"') (char '"') (many $ noneOf "\"") 
 
 specifically s = do w <- string s
                     spaces
                     return w
 
 insert  = specifically "insert" >> choice [Insert <$> pAuthor
-                                          ,Insert <$> pSource]
+                                          ,Insert <$> pSource
+                                          ,Insert <$> pQuote]
 
 lookup = undefined
 delete = undefined
@@ -96,6 +95,31 @@ pSource = do string "source"
 parseMetadata = do
                     elems <- between (char '{' <* spaces)(char '}' <* spaces) variousValues
                     return $ Map.fromList elems
+
+-- Quote parsing
+pQuote = do
+            string "quote"
+            spaces
+            content <- betweenBrackets
+            spaces
+            string "in"
+            spaces
+            title <- betweenBrackets <|> simpleString
+            localization <- option Nothing (pLocation <* spaces)
+            tags <- option [] (pTags <* spaces)
+            comment <- option Nothing (pComment <* spaces)
+            return $ PQuote $ ParserQuote content title tags localization comment
+
+pLocation = do
+                spaces
+                string "at"
+                spaces
+                v <- simpleString
+                return $ Just v
+
+pTags = between (string "((" <* spaces) (string "))" <* spaces) (simpleString `sepBy` (char ','))
+
+pComment = Just <$> between (string "[[" <* spaces) (string "]]" <* spaces) (many $ noneOf "]")
 
 variousValues = valuePair `sepBy` (char ',' <* spaces)
 
