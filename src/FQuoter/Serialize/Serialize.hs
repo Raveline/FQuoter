@@ -38,53 +38,54 @@ instance Functor SerializationF where
     fmap f (CommitAction n) = CommitAction (f n)
     fmap f (RollbackAction n) = RollbackAction (f n)
 
-type Serialization = FreeT SerializationF
+type Serialization = FreeF SerializationF
+type SerializationT = FreeT SerializationF
 
-associate2 :: (Monad m) => PairOfKeys -> ParsedType -> Serialization m ()
+associate2 :: (Monad m) => PairOfKeys -> ParsedType -> SerializationT m ()
 associate2 pks t = liftF $ Associate2 pks t ()
 
-create :: (Monad m) => ParsedType -> Serialization m ()
+create :: (Monad m) => ParsedType -> SerializationT m ()
 create t = liftF $ Create t ()
 
-search :: (Monad m) => DBType -> SearchTerm -> Serialization m [DBValue SerializedType]
+search :: (Monad m) => DBType -> SearchTerm -> SerializationT m [DBValue SerializedType]
 search typ term = liftF $ Search typ term id
 
-lastInsert :: (Monad m) => Serialization m PrimaryKey
+lastInsert :: (Monad m) => SerializationT m PrimaryKey
 lastInsert = liftF $ LastInsert id
 
-update :: (Monad m) => PrimaryKey -> SerializedType -> Serialization m ()
+update :: (Monad m) => PrimaryKey -> SerializedType -> SerializationT m ()
 update pk st = liftF $ Update pk st ()
 
-commitAction :: (Monad m) => Serialization m ()
+commitAction :: (Monad m) => SerializationT m ()
 commitAction = liftF $ CommitAction ()
 
-rollbackAction :: (Monad m) => Serialization m ()
+rollbackAction :: (Monad m) => SerializationT m ()
 rollbackAction = liftF $ RollbackAction ()
 
-process :: (IConnection c, MonadIO m) => Serialization (ReaderT c m) next -> ReaderT c m next
-process fr = do
-        v <- runFreeT fr
-        case  v of
-            Pure r -> return r
-            Free (Create t n) -> do c <- ask
-                                    liftIO $ c <~ t 
-                                    process n 
-            Free (Search t s n) -> do c <- ask
-                                      v <- liftIO $ c ~> (t,s) 
-                                      v' <- mapM (return . unsqlizeST t) v
-                                      process (n v')
-            Free (Associate2 pks t n) -> do c <- ask
-                                            liftIO $ c <~~ (pks, t)
-                                            process n
-            Free (LastInsert n) -> do c <- ask
-                                      l <- liftIO $ queryLastInsert c 
-                                      process (n l)
-            Free (CommitAction n) -> do c <- ask
-                                        liftIO $ commit c 
-                                        process n
-            Free (RollbackAction n) -> do c <- ask
-                                          liftIO $ rollback c 
+process :: (IConnection c, MonadIO m) => SerializationT (ReaderT c m) next -> ReaderT c m next
+process fr = runFreeT fr >>= process'
+
+process'  :: (IConnection c, MonadIO m) => Serialization next (SerializationT (ReaderT c m) next) -> ReaderT c m next
+process' (Pure r) = return r
+process' (Free (Create t n)) = do c <- ask
+                                  liftIO $ c <~ t 
+                                  process n 
+process' (Free (Search t s n)) = do c <- ask
+                                    v <- liftIO $ c ~> (t,s) 
+                                    v' <- mapM (return . unsqlizeST t) v
+                                    process (n v')
+process' (Free (Associate2 pks t n)) = do c <- ask
+                                          liftIO $ c <~~ (pks, t)
                                           process n
+process' (Free (LastInsert n)) = do c <- ask
+                                    l <- liftIO $ queryLastInsert c 
+                                    process (n l)
+process' (Free (CommitAction n)) = do c <- ask
+                                      liftIO $ commit c 
+                                      process n
+process' (Free (RollbackAction n)) = do c <- ask
+                                        liftIO $ rollback c 
+                                        process n
 
 (<~) :: (IConnection c) => c -> ParsedType -> IO ()
 conn <~ s = void (run conn (getInsert s) (sqlize s) )
