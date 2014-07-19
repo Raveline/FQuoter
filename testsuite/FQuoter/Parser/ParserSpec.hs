@@ -43,10 +43,15 @@ tcomment = "Come on man, was it the worst or the best ? Make up your mind !"
 insertIncipit3 = insertIncipit1 ++ " " ++ ttags
 insertIncipit4 = insertIncipit1 ++ " [[" ++ tcomment ++ "]]"
 
+testcase1_quote = "In ways that need not be doctrinal, strong poems are always omens of resurrection."
+testcase1 = "insert quote \"" ++ testcase1_quote ++ "\" in anxiety at page xxiv"
+
 correctIncipit1 = Insert $ PQuote $ ParserQuote tquote ttitle Nothing [] Nothing
 correctIncipit2 = Insert $ PQuote $ ParserQuote tquote ttitle (Just "page 2") [] Nothing
 correctIncipit3 = Insert $ PQuote $ ParserQuote tquote ttitle Nothing ["Classic", "Incipit"] Nothing
 correctIncipit4 = Insert $ PQuote $ ParserQuote tquote ttitle Nothing [] (Just tcomment)
+
+correcttestcase1 = Insert $ PQuote $ ParserQuote testcase1_quote "anxiety" (Just "page xxiv") [] Nothing
 
 spec = do
     describe "Check author insertion commands." $ do
@@ -78,3 +83,5 @@ spec = do
             parseInput' insertIncipit3 `shouldBe` correctIncipit3
         it ("Parse " ++ insertIncipit4) $ do
             parseInput' insertIncipit4 `shouldBe` correctIncipit4
+        it ("Parse " ++ testcase1) $ do
+            parseInput' testcase1 `shouldBe` correcttestcase1

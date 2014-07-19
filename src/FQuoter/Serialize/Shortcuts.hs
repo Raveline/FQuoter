@@ -28,9 +28,6 @@ instance Show DBError where
 
 type FalliableSerialization r m a = FreeT SerializationF (ReaderT r (ExceptT DBError m)) a
 
-conclude :: (Monad m) => FalliableSerialization r m ()
-conclude = commitAction >> return ()
-
 insert :: (Monad m) => ParsedType -> FalliableSerialization r m ()
 {- Simply insert an author in the DB. -}
 insert a@(PAuthor _) = create a
@@ -45,9 +42,26 @@ insert s@(PSource (ParserSource tit auth meta)) =
     do create s
        idSource <- lastInsert 
        validatedAuthors <- mapM validateAuthor auth
-       -- Do something with good authors
+       mapM (associate (DBSource, DBAuthor) . (,) idSource) validatedAuthors
        mapM (insertMetadatas idSource) (Map.toList meta)
        return ()
+insert q@(PQuote pq@(ParserQuote content source loc tags comments)) =
+    do source <- getPrimaryKey DBSource source
+       let q' = PLinkedQuote $ LinkedQuote pq source
+       create q'
+       idQuote <- lastInsert
+       -- associate (DBQuote, DBAuthor) (idQuote, source)
+       tags' <- mapM (readOrInsert DBTag) tags
+       mapM (associate (DBQuote, DBTag) . ( (,) idQuote)) tags'
+       return ()
+
+getPrimaryKey :: (Monad m) => DBType -> String -> FalliableSerialization r m Integer
+getPrimaryKey typ s 
+    = do result <- search typ (ByName s)
+         case result of
+            [] -> throwError $ NonExistingDataError s
+            [dbv] -> return $ primaryKey dbv
+            res -> throwError $ AmbiguousDataError $ map (show . value) res
        
 validateAuthor :: (Monad m) => String -> FalliableSerialization r m Integer
 validateAuthor s = do
@@ -65,13 +79,15 @@ insertMetadatas sourceId (info, value)
          associate2 (pk, sourceId) (PMetadataValue value)
          return ()
 
-{- Currently deficient function - not generalized enough. -}
 readOrInsert :: (Monad m) => DBType -> String -> FalliableSerialization r m PrimaryKey
 readOrInsert typ term = do
                         result <- search typ (ByName term)
                         case result of
                             []  -> do
-                                create $ PMetadataInfo term
+                                create $ (findConstructor typ) term
                                 lastInsert
                             [dbv] -> return $ primaryKey dbv
-                            _   -> error "Not handling multiple results."
+                            dbvs -> throwError $ AmbiguousDataError $ map (show . value) dbvs
+    where
+        findConstructor DBMetadataInfo = PMetadataInfo
+        findConstructor DBTag = PTag

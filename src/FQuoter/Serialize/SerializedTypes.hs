@@ -10,6 +10,7 @@ import qualified Data.Map as Map
 type PrimaryKey = Integer 
 type Query = String 
 type PairOfKeys = (PrimaryKey, PrimaryKey)
+type PairOfTypes = (DBType, DBType)
 
 -- Conversion utilities
 
@@ -85,10 +86,15 @@ sqlize (PSource (ParserSource title _ _)) =  [SqlNull
                                              ,toSql title]
 sqlize (PMetadataInfo s) = sqlizeQuoterString s
 sqlize (PMetadataValue v) = sqlizeQuoterString v
-sqlize (PQuote (ParserQuote txt _ loc _ comm)) = [SqlNull
-                                                 ,toSql txt
-                                                 ,maybeStringToSql loc
-                                                 ,maybeStringToSql comm]
+sqlize (PQuote _) = 
+    error "Wrong call. Link with source first and use PLinkedQuote."
+sqlize (PLinkedQuote (LinkedQuote (ParserQuote txt _ loc _ comm) source)) = 
+    [SqlNull
+    ,toSql source
+    ,toSql txt
+    ,maybeStringToSql loc
+    ,maybeStringToSql comm]
+sqlize (PTag tag) = sqlizeQuoterString tag
 
 sqlizeQuoterString s = [SqlNull, toSql s]
 
@@ -103,5 +109,7 @@ unsqlizeST (DBMetadataValue) = fmap SMetadataValue . unsqlize
 data SearchTerm 
     = ById Integer
     | ByName String
+    deriving (Eq, Show)
 
-data DBType = DBAuthor | DBSource | DBMetadataInfo | DBMetadataValue | DBQuote
+data DBType = DBAuthor | DBSource | DBMetadataInfo | DBMetadataValue | DBQuote | DBTag
+    deriving (Eq, Show)

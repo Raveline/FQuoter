@@ -39,7 +39,8 @@ CREATE TABLE MetadataValue (
 DROP TABLE IF EXISTS Quote;
 CREATE TABLE Quote (
     id_quote            INTEGER PRIMARY KEY AUTOINCREMENT,
-    related_source      INTEGER
+    related_source      INTEGER,
+    localization        VARCHAR(255),
     content             TEXT,
     comment             TEXT,
     FOREIGN KEY(related_source) REFERENCES Source(id_source)

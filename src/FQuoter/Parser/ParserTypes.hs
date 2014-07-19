@@ -14,6 +14,8 @@ data ParsedType
     | PMetadataInfo String
     | PMetadataValue String
     | PQuote ParserQuote
+    | PLinkedQuote LinkedParserQuote
+    | PTag String
     deriving (Eq, Show)
 
 data ParserSource = ParserSource { prsTitle :: String
@@ -27,3 +29,7 @@ data ParserQuote = ParserQuote { prsContent :: String,
                                  prsTags :: [String],
                                  prsComment :: Maybe String }
                                  deriving (Eq, Show)
+
+data LinkedParserQuote = LinkedQuote { prsQuote :: ParserQuote,
+                                       sourcePk :: Integer }
+                                       deriving (Eq, Show)

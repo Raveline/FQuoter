@@ -20,7 +20,7 @@ import FQuoter.Serialize.Queries
 -- Nothing will be turned into an empty string
 data SerializationF next
     = Create ParsedType next
-    | Associate PairOfKeys next
+    | Associate PairOfTypes PairOfKeys next
     | Associate2 PairOfKeys ParsedType next
     | Search DBType SearchTerm ([DBValue SerializedType] -> next)
     | LastInsert (PrimaryKey -> next)
@@ -31,7 +31,7 @@ data SerializationF next
 
 instance Functor SerializationF where
     fmap f (Create st n) = Create st (f n)
-    fmap f (Associate pks n) = Associate pks (f n)
+    fmap f (Associate pts pks n) = Associate pts pks (f n)
     fmap f (Associate2 pks t n) = Associate2 pks t (f n)
     fmap f (Search typ term n) = Search typ term (f . n)
     fmap f (LastInsert n) = LastInsert (f . n)
@@ -40,6 +40,9 @@ instance Functor SerializationF where
 
 type Serialization = FreeF SerializationF
 type SerializationT = FreeT SerializationF
+
+associate :: (Monad m) => PairOfTypes -> PairOfKeys -> SerializationT m ()
+associate pts pks = liftF $ Associate pts pks ()
 
 associate2 :: (Monad m) => PairOfKeys -> ParsedType -> SerializationT m ()
 associate2 pks t = liftF $ Associate2 pks t ()
@@ -74,6 +77,9 @@ process' (Free (Search t s n)) = do c <- ask
                                     v <- liftIO $ c ~> (t,s) 
                                     v' <- mapM (return . unsqlizeST t) v
                                     process (n v')
+process' (Free (Associate pot pok n)) = do c <- ask
+                                           liftIO $ c <~> (pot, pok)
+                                           process n
 process' (Free (Associate2 pks t n)) = do c <- ask
                                           liftIO $ c <~~ (pks, t)
                                           process n
@@ -92,6 +98,11 @@ conn <~ s = void (run conn (getInsert s) (sqlize s) )
 
 (~>) :: (IConnection c) => c -> (DBType, SearchTerm) -> IO [[SqlValue]]
 conn ~> (t,st) = uncurry (lookUp conn) (t,st)
+
+(<~>) :: (IConnection c) => c -> (PairOfTypes, PairOfKeys) -> IO ()
+conn <~> (ts, ks) = void(run conn query (SqlNull:sqlizePair ks))
+        where
+            query = uncurry getAssociate $ ts
 
 (<~~) :: (IConnection c) => c -> (PairOfKeys, ParsedType) -> IO  ()
 conn <~~ (p,  t) = void(run conn (getInsert t) (SqlNull:sqlizePair p))

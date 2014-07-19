@@ -105,7 +105,7 @@ pQuote = PQuote <$> pQuote'
                                 <*> tags
                                 <*> comment
           content = (specifically "quote" *> (betweenQuotes <* spaces))
-          source = (specifically "in" *> (betweenQuotes <|> simpleString))
+          source = (specifically "in" *> (simpleString <|> betweenQuotes))
           tags = option [] (pTags <* spaces)
           loc = option Nothing (pLocation <* spaces) 
           comment = option Nothing (pComment <* spaces)
