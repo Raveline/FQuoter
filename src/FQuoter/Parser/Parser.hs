@@ -1,7 +1,6 @@
 module FQuoter.Parser.Parser 
 (
     Action (..),
-    ParserSource (..),
     parseInput
 )
 where
@@ -15,41 +14,50 @@ import FQuoter.Parser.ParserTypes
 
 import qualified Data.Map as Map
 
+-----------
+-- Exposed
+-----------
+
+-- Result of parsing.
 data Action 
     = Insert ParsedType
     deriving (Eq, Show)
 
+parseInput :: String -> Either ParseError Action
+parseInput = parse command "(unknown)" 
+
 {- A command contains a term (Insert, Search, Delete) and parameters. -}
 -- command :: GenParser Char st Action
 command = choice [ insert
-                 -- , Insert <$> pSource
                  -- and others
                  ]
 
-word = do w <- many1 (alphaNum <|> char '\'')
-          spaces
-          return w
+--------------
+-- Utilities
+--------------
 
+{- Get a simple word made of letters and/or numbers -}
+word = many1 (alphaNum <|> char '\'') <* spaces
+
+{- Read words till a special character or a word chaine is found -}
 words' = spaces >> word `manyTill` endWordChain
+    where
+        endWordChain = void (lookAhead symbols)
+                    <|> void (lookAhead keywords)
+                    <|> eof
+        keywords = try (string "at") 
+                   <|> string "aka" 
+                   <|> string "by" 
+                   <|> string "in"
+        symbols = oneOf "(){}[]\":,"
 
-simpleString = do
-                w <- words' 
-                return $ unwords w
-                  
+{- Return a list of words as a single string. -}
+simpleString = unwords <$> words'
 
-endWordChain = void (lookAhead symbols)
-               <|> void (lookAhead keywords)
-               <|> eof
+{- Read a string between brackets. -}
+betweenQuotes = between (char '"') (char '"') (many $ noneOf "\"") 
 
-keywords = try (string "at") <|> string "aka" <|> string "by" <|> string "in"
-
-symbols = oneOf "(){}[]\":,"
-
-betweenBrackets = between (char '"') (char '"') (many $ noneOf "\"") 
-
-specifically s = do w <- string s
-                    spaces
-                    return w
+specifically s = string s <* spaces
 
 insert  = specifically "insert" >> choice [Insert <$> pAuthor
                                           ,Insert <$> pSource
@@ -73,49 +81,36 @@ authorFullNameOrNick = do name <- words'
                           return $ authorFromStringArray name
 
 authorFullNameAndNick = do name <- words'                      
-                           nickName <- akaPseudonym <|> betweenBrackets
+                           nickName <- akaPseudonym <|> betweenQuotes
                            return $ Author (Just $ unwords . init $ name) (Just $ last name) (Just nickName)
 
-akaPseudonym = do
-                string "aka"
-                spaces
-                simpleString
+akaPseudonym = specifically "aka" >> simpleString
 
 -- Source parsing
-pSource = do string "source"
-             spaces
-             title <- betweenBrackets
-             spaces
-             string "by"
-             spaces
-             authors <- (betweenBrackets <|> simpleString) `sepBy` (char ',' <* spaces)
-             metadata <- option Map.empty parseMetadata
-             return $ PSource $ ParserSource title authors metadata
+pSource = PSource <$> pSource'
+    where pSource' = ParserSource <$> title
+                                  <*> authors
+                                  <*> meta
+          title = (specifically "source" *> (betweenQuotes <* spaces))
+          authors = (specifically "by" *> (betweenQuotes <|> simpleString) `sepBy` (char ',' <* spaces))
+          meta = option Map.empty parseMetadata
 
-parseMetadata = do
-                    elems <- between (char '{' <* spaces)(char '}' <* spaces) variousValues
-                    return $ Map.fromList elems
+parseMetadata = Map.fromList <$> between (char '{' <* spaces)(char '}' <* spaces) variousValues
 
 -- Quote parsing
-pQuote = do
-            string "quote"
-            spaces
-            content <- betweenBrackets
-            spaces
-            string "in"
-            spaces
-            title <- betweenBrackets <|> simpleString
-            localization <- option Nothing (pLocation <* spaces)
-            tags <- option [] (pTags <* spaces)
-            comment <- option Nothing (pComment <* spaces)
-            return $ PQuote $ ParserQuote content title tags localization comment
+pQuote = PQuote <$> pQuote'
+    where pQuote' = ParserQuote <$> content
+                                <*> source
+                                <*> loc
+                                <*> tags
+                                <*> comment
+          content = (specifically "quote" *> (betweenQuotes <* spaces))
+          source = (specifically "in" *> (betweenQuotes <|> simpleString))
+          tags = option [] (pTags <* spaces)
+          loc = option Nothing (pLocation <* spaces) 
+          comment = option Nothing (pComment <* spaces)
 
-pLocation = do
-                spaces
-                string "at"
-                spaces
-                v <- simpleString
-                return $ Just v
+pLocation = Just <$> (specifically "at" *> simpleString)
 
 pTags = between (string "((" <* spaces) (string "))" <* spaces) (simpleString `sepBy` (char ','))
 
@@ -123,11 +118,4 @@ pComment = Just <$> between (string "[[" <* spaces) (string "]]" <* spaces) (man
 
 variousValues = valuePair `sepBy` (char ',' <* spaces)
 
-valuePair = do
-                info <- simpleString
-                char ':' 
-                value <- simpleString
-                return (info, value)
-
-parseInput :: String -> Either ParseError Action
-parseInput = parse command "(unknown)" 
+valuePair = (,) <$> simpleString <*> (char ':' *> simpleString)

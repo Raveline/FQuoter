@@ -43,10 +43,10 @@ tcomment = "Come on man, was it the worst or the best ? Make up your mind !"
 insertIncipit3 = insertIncipit1 ++ " " ++ ttags
 insertIncipit4 = insertIncipit1 ++ " [[" ++ tcomment ++ "]]"
 
-correctIncipit1 = Insert $ PQuote $ ParserQuote tquote ttitle [] Nothing Nothing
-correctIncipit2 = Insert $ PQuote $ ParserQuote tquote ttitle [] (Just "page 2") Nothing
-correctIncipit3 = Insert $ PQuote $ ParserQuote tquote ttitle ["Classic", "Incipit"] Nothing Nothing
-correctIncipit4 = Insert $ PQuote $ ParserQuote tquote ttitle [] Nothing (Just tcomment)
+correctIncipit1 = Insert $ PQuote $ ParserQuote tquote ttitle Nothing [] Nothing
+correctIncipit2 = Insert $ PQuote $ ParserQuote tquote ttitle (Just "page 2") [] Nothing
+correctIncipit3 = Insert $ PQuote $ ParserQuote tquote ttitle Nothing ["Classic", "Incipit"] Nothing
+correctIncipit4 = Insert $ PQuote $ ParserQuote tquote ttitle Nothing [] (Just tcomment)
 
 spec = do
     describe "Check author insertion commands." $ do

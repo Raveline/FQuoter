@@ -85,7 +85,7 @@ sqlize (PSource (ParserSource title _ _)) =  [SqlNull
                                              ,toSql title]
 sqlize (PMetadataInfo s) = sqlizeQuoterString s
 sqlize (PMetadataValue v) = sqlizeQuoterString v
-sqlize (PQuote (ParserQuote txt _ _ loc comm)) = [SqlNull
+sqlize (PQuote (ParserQuote txt _ loc _ comm)) = [SqlNull
                                                  ,toSql txt
                                                  ,maybeStringToSql loc
                                                  ,maybeStringToSql comm]

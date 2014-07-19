@@ -23,7 +23,7 @@ data ParserSource = ParserSource { prsTitle :: String
 
 data ParserQuote = ParserQuote { prsContent :: String,
                                  prsSource :: String,
-                                 prsTags :: [String],
                                  prsLocalization :: Maybe String,
+                                 prsTags :: [String],
                                  prsComment :: Maybe String }
                                  deriving (Eq, Show)
