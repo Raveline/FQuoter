@@ -10,36 +10,37 @@ import FQuoter.Parser.ParserTypes
 main :: IO()
 main = hspec spec
 
+{- Utility function for parsing. -}
+parseInput' inp = case parseInput inp of
+                    Right x -> x
+                    Left n -> error (show n)
+
+{- Author insertion checked values -}
 insertCharlesDickens = Insert $ PAuthor (Author (Just "Charles") (Just "Dickens") Nothing)
 insertHomer = Insert $ PAuthor (Author Nothing Nothing (Just "Homer"))
 insertVirgil = Insert $ PAuthor (Author (Just "Vergilius Maro") (Just "Publius") (Just "Virgil"))
 insertTolkien = Insert $ PAuthor (Author (Just "John Ronald Reuel") (Just "Tolkien") Nothing)
 
+{- Source insertion checked values -}
 tale2cities = "A tale of two cities"
-
 noMetadata = Map.empty
 metadata' = Map.fromList[("Published date", "1887")
                         ,("Editor", "Penguin")]
-
 dickensSearchTerm = ParserSource tale2cities ["Dickens"] noMetadata
 sourceMetadata = ParserSource tale2cities ["Dickens"] metadata'
 sourceMultiauthor = ParserSource "All the President's Men" ["Bob Woodward", "Carl Bernstein"] noMetadata
-
 insertDickensSearchTerm = Insert $ PSource dickensSearchTerm
 insertSourceMetadatas = Insert $ PSource sourceMetadata
 insertMultiauthorSource = Insert $ PSource sourceMultiauthor
 
-parseInput' inp = case parseInput inp of
-                    Right x -> x
-                    Left n -> error (show n)
-
--- must pass :
+{- Parsing strings and values for quotes -}
 ttitle = "A tale of two cities"
 tquote = "It was the best of time, it was the worst of time"
-insertIncipit1 = "insert quote \"" ++ tquote ++ "\" in " ++ ttitle
-insertIncipit2 =  insertIncipit1 ++ " at page 2"
 ttags = "((Classic, Incipit))"
 tcomment = "Come on man, was it the worst or the best ? Make up your mind !"
+
+insertIncipit1 = "insert quote \"" ++ tquote ++ "\" in " ++ ttitle
+insertIncipit2 =  insertIncipit1 ++ " at page 2"
 insertIncipit3 = insertIncipit1 ++ " " ++ ttags
 insertIncipit4 = insertIncipit1 ++ " [[" ++ tcomment ++ "]]"
 
@@ -52,6 +53,10 @@ correctIncipit3 = Insert $ PQuote $ ParserQuote tquote ttitle Nothing ["Classic"
 correctIncipit4 = Insert $ PQuote $ ParserQuote tquote ttitle Nothing [] (Just tcomment)
 
 correcttestcase1 = Insert $ PQuote $ ParserQuote testcase1_quote "anxiety" (Just "page xxiv") [] Nothing
+
+{- Search values -}
+findTime = FindWord "time"
+findClassicIncipit = FindTag ["Classic", "Incipit"]
 
 spec = do
     describe "Check author insertion commands." $ do
@@ -85,3 +90,8 @@ spec = do
             parseInput' insertIncipit4 `shouldBe` correctIncipit4
         it ("Parse quote with a title starting by a keyword" ++ testcase1) $ do
             parseInput' testcase1 `shouldBe` correcttestcase1
+    describe "Checks search commands" $ do
+        it ("Parse a search by word(s) command.") $ do
+            parseInput' "search time" `shouldBe` findTime
+        it ("Parse a search by tags command.") $ do
+            parseInput' "search [Classic, Incipit]" `shouldBe` findClassicIncipit

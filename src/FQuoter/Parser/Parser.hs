@@ -21,6 +21,8 @@ import qualified Data.Map as Map
 -- Result of parsing.
 data Action 
     = Insert ParsedType
+    | FindWord String
+    | FindTag [String]
     deriving (Eq, Show)
 
 parseInput :: String -> Either ParseError Action
@@ -29,6 +31,7 @@ parseInput = parse command "(unknown)"
 {- A command contains a term (Insert, Search, Delete) and parameters. -}
 -- command :: GenParser Char st Action
 command = choice [ insert
+                 , find
                  -- and others
                  ]
 
@@ -54,19 +57,36 @@ words' = spaces >> word `manyTill` endWordChain
 {- Return a list of words as a single string. -}
 simpleString = unwords <$> words'
 
-{- Read a string between brackets. -}
+{- Read a string between double quotes -}
 betweenQuotes = between (char '"') (char '"') (many $ noneOf "\"") 
 
+{- Read words between brackets. -}
+betweenBrackets = between (char '[') (char ']') (simpleString `sepBy` (char ',' <* spaces))
+
+{- Parse a defined word and the spaces after it -}
 specifically s = string s <* spaces
 
+{- Parse key values separated by columns and commas. -}
+variousValues = valuePair `sepBy` (char ',' <* spaces)
+    where
+        valuePair = (,) <$> simpleString <*> (char ':' *> simpleString)
+
+--------------
+-- Insertion
+--------------
 insert  = specifically "insert" >> choice [Insert <$> pAuthor
                                           ,Insert <$> pSource
                                           ,Insert <$> pQuote]
 
-lookup = undefined
+find = (specifically "find" <|> specifically "search")
+       >> choice [FindTag <$> betweenBrackets
+                 ,FindWord <$> simpleString]
+
 delete = undefined
 
+-----------------
 -- Author parsing
+-----------------
 pAuthor = do
             specifically "author"
             auth <- try authorFullNameAndNick <|> authorFullNameOrNick
@@ -86,7 +106,9 @@ authorFullNameAndNick = do name <- words'
 
 akaPseudonym = specifically "aka" >> simpleString
 
+-----------------
 -- Source parsing
+-----------------
 pSource = PSource <$> pSource'
     where pSource' = ParserSource <$> title
                                   <*> authors
@@ -97,7 +119,9 @@ pSource = PSource <$> pSource'
 
 parseMetadata = Map.fromList <$> between (char '{' <* spaces)(char '}' <* spaces) variousValues
 
+----------------
 -- Quote parsing
+----------------
 pQuote = PQuote <$> pQuote'
     where pQuote' = ParserQuote <$> content
                                 <*> source
@@ -116,6 +140,3 @@ pTags = between (string "((" <* spaces) (string "))" <* spaces) (simpleString `s
 
 pComment = Just <$> between (string "[[" <* spaces) (string "]]" <* spaces) (many $ noneOf "]")
 
-variousValues = valuePair `sepBy` (char ',' <* spaces)
-
-valuePair = (,) <$> simpleString <*> (char ':' *> simpleString)
