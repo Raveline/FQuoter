@@ -75,13 +75,13 @@ spec = do
         -- TODO : make sure the anonymous author is recognzied with the all Nothing author
         -- TODO : make sure a title with a comma can pass
     describe "Checks quote insertion commands" $ do
-        it ("Parse " ++ insertIncipit1) $ do
+        it ("Parse basic quote") $ do
             parseInput' insertIncipit1 `shouldBe` correctIncipit1
-        it ("Parse " ++ insertIncipit2) $ do
+        it ("Parse quote with localization" ++ insertIncipit2) $ do
             parseInput' insertIncipit2 `shouldBe` correctIncipit2
-        it ("Parse " ++ insertIncipit3) $ do
+        it ("Parse quote with tags" ++ insertIncipit3) $ do
             parseInput' insertIncipit3 `shouldBe` correctIncipit3
-        it ("Parse " ++ insertIncipit4) $ do
+        it ("Parse quote with comment" ++ insertIncipit4) $ do
             parseInput' insertIncipit4 `shouldBe` correctIncipit4
-        it ("Parse " ++ testcase1) $ do
+        it ("Parse quote with a title starting by a keyword" ++ testcase1) $ do
             parseInput' testcase1 `shouldBe` correcttestcase1

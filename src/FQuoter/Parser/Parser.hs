@@ -45,10 +45,10 @@ words' = spaces >> word `manyTill` endWordChain
         endWordChain = void (lookAhead symbols)
                     <|> void (lookAhead keywords)
                     <|> eof
-        keywords = try (string "at") 
-                   <|> string "aka" 
-                   <|> string "by" 
-                   <|> string "in"
+        keywords = try (string "at ") 
+                   <|> try (string "aka ")
+                   <|> try (string "by ")
+                   <|> try (string "in ")
         symbols = oneOf "(){}[]\":,"
 
 {- Return a list of words as a single string. -}
