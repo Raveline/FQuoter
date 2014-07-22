@@ -37,6 +37,8 @@ library
     hs-source-dirs:     src
     exposed-modules:    FQuoter.Quote
                        ,FQuoter.Serialize.Serialize
+                       ,FQuoter.Serialize.SerializedTypes
+                       ,FQuoter.Serialize.Shortcuts
                        ,FQuoter.Parser.Parser
                        ,FQuoter.Parser.ParserTypes
     build-depends:      base >=4.6 && <4.7, containers >=0.5 && <0.6
@@ -59,3 +61,4 @@ test-suite Tests
                        ,HDBC-sqlite3
                        ,directory
                        ,free
+                       ,mtl >= 2.2.1

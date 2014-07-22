@@ -4,7 +4,8 @@ module FQuoter.Serialize.Shortcuts
     DBError (..),
     insert,
     searchWord,
-    searchTags
+    searchTags,
+    FalliableSerialization
 )
 where
 
