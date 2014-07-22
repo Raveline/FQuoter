@@ -55,11 +55,11 @@ correctIncipit3 = Insert $ PQuote $ ParserQuote tquote ttitle Nothing ["Classic"
 correctIncipit4 = Insert $ PQuote $ ParserQuote tquote ttitle Nothing [] [] (Just tcomment)
 correctIncipit5 = Insert $ PQuote $ ParserQuote tquote ttitle Nothing [] ["Dickens"] Nothing
 
-correcttestcase1 = Insert $ PQuote $ ParserQuote testcase1_quote "anxiety" (Just "page xxiv") [] Nothing
+correcttestcase1 = Insert $ PQuote $ ParserQuote testcase1_quote "anxiety" (Just "page xxiv") [] [] Nothing
 
 {- Search values -}
 findTime = FindWord "time"
-findClassicIncipit = FindTag ["Classic", "Incipit"]
+findClassicIncipit = FindTags ["Classic", "Incipit"]
 
 spec = do
     describe "Check author insertion commands." $ do
