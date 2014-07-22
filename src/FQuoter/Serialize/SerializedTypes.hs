@@ -5,6 +5,7 @@ import FQuoter.Quote
 import FQuoter.Parser.ParserTypes
 import Database.HDBC
 import qualified Data.Map as Map
+import Data.List.Split
 
 ---- TYPES
 type PrimaryKey = Integer 
@@ -13,7 +14,6 @@ type PairOfKeys = (PrimaryKey, PrimaryKey)
 type PairOfTypes = (DBType, DBType)
 
 -- Conversion utilities
-
 maybeStringToSql :: Maybe String -> SqlValue
 maybeStringToSql Nothing        = toSql ""
 maybeStringToSql (Just s)       = toSql s
@@ -25,13 +25,6 @@ sqlToMaybeString s@(SqlByteString _)  = stringToMaybe $ fromSql s
         stringToMaybe [] = Nothing
         stringToMaybe s = Just s
 sqlToMaybeString _ = Nothing
-
--- Anything that can be serialized must be translated in a list of
--- SqlValues, and can be translated back from it. We will however
--- stored those "translated" objects as DBValues, wich will contain
--- the primary key.
-class SqliteSerializable a where
-    unsqlize :: [SqlValue] -> DBValue a
 
 {- Container for serialized type. Can contain all the basic Quoter types.
 Is used to insert them and as a return for queries.
@@ -50,32 +43,6 @@ data DBValue a = DBValue { primaryKey :: PrimaryKey
                                      , value :: a
                          }
 
-instance Functor DBValue where
-    fmap f (DBValue pk v) = DBValue pk (f v)
-
-
-instance SqliteSerializable Author where
-    unsqlize (pkey:fName:lName:sName:[]) = DBValue (fromSql pkey) toAuthor
-        where
-            toAuthor = Author (sqlToMaybeString fName)
-                                 (sqlToMaybeString lName)
-                                 (sqlToMaybeString sName)
-
-instance SqliteSerializable Source where
-    unsqlize (pkey:title:[]) =  DBValue (fromSql pkey) 
-                                (Source (fromSql title) [] Map.empty)
-
-instance SqliteSerializable QuoterString where
-    unsqlize (pkey:s:[]) = DBValue (fromSql pkey) (QuoterString(fromSql s))
-
-instance SqliteSerializable Quote where
-    unsqlize = undefined
-
-instance SqliteSerializable MetadataInfo where
-    unsqlize = fmap MetadataInfo . unsqlize 
-
-instance SqliteSerializable MetadataValue where
-    unsqlize = fmap MetadataValue . unsqlize
 
 sqlize :: ParsedType -> [SqlValue]
 sqlize (PAuthor (Author fName lName sName)) = [SqlNull
@@ -88,27 +55,50 @@ sqlize (PMetadataInfo s) = sqlizeQuoterString s
 sqlize (PMetadataValue v) = sqlizeQuoterString v
 sqlize (PQuote _) = 
     error "Wrong call. Link with source first and use PLinkedQuote."
-sqlize (PLinkedQuote (LinkedQuote (ParserQuote txt _ loc _ comm) source)) = 
+sqlize (PLinkedQuote (LinkedQuote (ParserQuote txt _ loc _ _ comm) source)) = 
     [SqlNull
     ,toSql source
-    ,toSql txt
     ,maybeStringToSql loc
+    ,toSql txt
     ,maybeStringToSql comm]
 sqlize (PTag tag) = sqlizeQuoterString tag
 
 sqlizeQuoterString s = [SqlNull, toSql s]
 
-
 unsqlizeST :: DBType -> [SqlValue] -> DBValue SerializedType
-unsqlizeST (DBAuthor) = fmap SAuthor . unsqlize
-unsqlizeST (DBSource) = fmap SSource . unsqlize
-unsqlizeST (DBQuote) = fmap SQuote . unsqlize
-unsqlizeST (DBMetadataInfo) = fmap SMetadataInfo . unsqlize
-unsqlizeST (DBMetadataValue) = fmap SMetadataValue . unsqlize
+unsqlizeST DBAuthor (pkey:fName:lName:sName:[]) = 
+    DBValue (fromSql pkey) (SAuthor $ sqlValuesToAuthor fName lName sName)
+unsqlizeST DBAuthor _ = error $ "SQL error, result array not fitting for author."
+unsqlizeST DBSource (pkey:title:[]) = 
+    DBValue (fromSql pkey) (SSource $ sqlValuesToSource title)
+unsqlizeST DBSource _ = error $ "SQL error, result array not fitting for source."
+unsqlizeST DBQuote (pk:loc:cont:comm:title:afname:alname:anname:ltags:[]) = 
+    DBValue (fromSql pk)
+            (SQuote quote')
+        where author' = sqlValuesToAuthor afname alname anname
+              source' = Source (fromSql title) [] Map.empty
+              toTagList = splitOn "," . fromSql $ ltags
+              quote' = Quote author' source' (fromSql cont) (sqlToMaybeString loc) (toTagList) (sqlToMaybeString comm)
+unsqlizeST DBMetadataInfo (key:s:[]) = 
+    DBValue (fromSql key) (SMetadataInfo $ MetadataInfo $ sqlValuesToQuoterString s)
+unsqlizeST DBMetadataValue (key:s:[]) =
+    DBValue (fromSql key) (SMetadataValue $ MetadataValue $ sqlValuesToQuoterString s)
+
+sqlValuesToAuthor :: SqlValue -> SqlValue -> SqlValue -> Author
+sqlValuesToAuthor fname lname nname = Author (sqlToMaybeString fname)
+                                             (sqlToMaybeString lname)
+                                             (sqlToMaybeString nname)
+
+sqlValuesToQuoterString :: SqlValue -> QuoterString
+sqlValuesToQuoterString = QuoterString . fromSql
+
+sqlValuesToSource :: SqlValue -> Source
+sqlValuesToSource title = Source (fromSql title) [] Map.empty
 
 data SearchTerm 
     = ById Integer
     | ByName String
+    | ByAssociation PairOfTypes Integer
     deriving (Eq, Show)
 
 data DBType = DBAuthor | DBSource | DBMetadataInfo | DBMetadataValue | DBQuote | DBTag

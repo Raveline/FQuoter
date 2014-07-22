@@ -20,7 +20,24 @@ main = do
 
 executeCommand :: Action -> IO ()
 executeCommand (Insert x) = insertAndDisplay x
+executeCommand (FindWord w) = do db <- getDB
+                                 result <- runExceptT $ runReaderT (process (searchWord w)) db
+                                 case result of
+                                    Left _ -> error "Should not happen. I think ?"
+                                    Right qs -> displayQuotes qs
+executeCommand (FindTags ts) = do db <- getDB
+                                  result <- runExceptT $ runReaderT (process (searchTags ts)) db
+                                  case result of
+                                    Left _ -> error "Should not happen. I think ?"
+                                    Right qs -> displayQuotes qs
 executeCommand _ = putStrLn "Not implemented yet."
+
+displayQuotes :: [SerializedType] -> IO ()
+displayQuotes = mapM_ displayQuote
+    where
+        displayQuote :: SerializedType -> IO ()
+        displayQuote (SQuote q) = print q
+        displayQuotes _ = error "Not a quote. This should not happen !"
 
 insertAndDisplay :: ParsedType -> IO ()
 insertAndDisplay a = do db <- getDB 

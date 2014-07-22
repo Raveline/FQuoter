@@ -2,7 +2,9 @@
 module FQuoter.Serialize.Shortcuts
 (
     DBError (..),
-    insert
+    insert,
+    searchWord,
+    searchTags
 )
 where
 
@@ -25,7 +27,6 @@ instance Show DBError where
     show (NonExistingDataError s) = s
     show (AmbiguousDataError s) = "Ambiguous input. Cannot choose between : " ++ unlines s
 
-
 type FalliableSerialization r m a = FreeT SerializationF (ReaderT r (ExceptT DBError m)) a
 
 insert :: (Monad m) => ParsedType -> FalliableSerialization r m ()
@@ -45,15 +46,30 @@ insert s@(PSource (ParserSource tit auth meta)) =
        mapM (associate (DBSource, DBAuthor) . (,) idSource) validatedAuthors
        mapM (insertMetadatas idSource) (Map.toList meta)
        return ()
-insert q@(PQuote pq@(ParserQuote content source loc tags comments)) =
+{- Insert an author in the DB. This... takes many steps.
+First we need to find, if it exists, the related source.
+Then, we want to find, if it has been specified, the author.
+If the user did not specify the author, we'll go for the default
+one (the source's author or authors). Then, we need to make a
+specific object with the proper id of the source.
+And then, we need to associate authors and tags, through the
+proper tables, to this source. -}
+insert q@(PQuote pq@(ParserQuote content source loc tags auths comments)) =
     do source <- getPrimaryKey DBSource source
-       let q' = PLinkedQuote $ LinkedQuote pq source
-       create q'
+       let insertableQuote = PLinkedQuote $ LinkedQuote pq source
+       create insertableQuote
        idQuote <- lastInsert
-       -- associate (DBQuote, DBAuthor) (idQuote, source)
+       authors <- getSourceAuthors auths source
+       mapM (associate (DBQuote, DBAuthor) . ( (,) idQuote)) authors
        tags' <- mapM (readOrInsert DBTag) tags
        mapM (associate (DBQuote, DBTag) . ( (,) idQuote)) tags'
        return ()
+
+getSourceAuthors :: (Monad m) => [String] -> Integer -> FalliableSerialization r m [Integer]
+getSourceAuthors [] idSource = 
+    search DBAuthor (ByAssociation (DBSource, DBAuthor) idSource)
+    >>= mapM (return . primaryKey) 
+getSourceAuthors xs _        = mapM validateAuthor xs
 
 getPrimaryKey :: (Monad m) => DBType -> String -> FalliableSerialization r m Integer
 getPrimaryKey typ s 
@@ -70,6 +86,14 @@ validateAuthor s = do
                         [] -> throwError $ NonExistingDataError s
                         [dbv] -> return $ primaryKey dbv
                         res -> throwError $ AmbiguousDataError $ map (show . value) res
+
+{- Searching throuh word will return a list of quotes,
+boxed in SerializedType. -}
+searchWord :: (Monad m) => String -> FalliableSerialization r m [SerializedType]
+searchWord w = do v <- (search DBQuote (ByName w))
+                  mapM (return . value) v
+
+searchTags = undefined
 
 {- Insert metadatas. In the Metadata table, insert the value,
 and the primary key to the related Metadata Type and Source. -}

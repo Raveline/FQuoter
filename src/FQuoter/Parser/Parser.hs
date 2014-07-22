@@ -22,7 +22,7 @@ import qualified Data.Map as Map
 data Action 
     = Insert ParsedType
     | FindWord String
-    | FindTag [String]
+    | FindTags [String]
     deriving (Eq, Show)
 
 parseInput :: String -> Either ParseError Action
@@ -39,6 +39,7 @@ command = choice [ insert
 -- Utilities
 --------------
 
+authorsList = (specifically "by" *> (betweenQuotes <|> simpleString) `sepBy` (char ',' <* spaces))
 {- Get a simple word made of letters and/or numbers -}
 word = many1 (alphaNum <|> char '\'') <* spaces
 
@@ -79,7 +80,7 @@ insert  = specifically "insert" >> choice [Insert <$> pAuthor
                                           ,Insert <$> pQuote]
 
 find = (specifically "find" <|> specifically "search")
-       >> choice [FindTag <$> betweenBrackets
+       >> choice [FindTags <$> betweenBrackets
                  ,FindWord <$> simpleString]
 
 delete = undefined
@@ -111,10 +112,9 @@ akaPseudonym = specifically "aka" >> simpleString
 -----------------
 pSource = PSource <$> pSource'
     where pSource' = ParserSource <$> title
-                                  <*> authors
+                                  <*> authorsList
                                   <*> meta
           title = (specifically "source" *> (betweenQuotes <* spaces))
-          authors = (specifically "by" *> (betweenQuotes <|> simpleString) `sepBy` (char ',' <* spaces))
           meta = option Map.empty parseMetadata
 
 parseMetadata = Map.fromList <$> between (char '{' <* spaces)(char '}' <* spaces) variousValues
@@ -127,9 +127,11 @@ pQuote = PQuote <$> pQuote'
                                 <*> source
                                 <*> loc
                                 <*> tags
+                                <*> authors
                                 <*> comment
           content = (specifically "quote" *> (betweenQuotes <* spaces))
           source = (specifically "in" *> (simpleString <|> betweenQuotes))
+          authors = option [] authorsList
           tags = option [] (pTags <* spaces)
           loc = option Nothing (pLocation <* spaces) 
           comment = option Nothing (pComment <* spaces)
@@ -139,4 +141,3 @@ pLocation = Just <$> (specifically "at" *> simpleString)
 pTags = between (string "((" <* spaces) (string "))" <* spaces) (simpleString `sepBy` (char ','))
 
 pComment = Just <$> between (string "[[" <* spaces) (string "]]" <* spaces) (many $ noneOf "]")
-

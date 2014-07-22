@@ -23,13 +23,17 @@ data ParserSource = ParserSource { prsTitle :: String
                                  , prsMetadata :: Map String String }
                                  deriving (Eq, Show)
 
-data ParserQuote = ParserQuote { prsContent :: String,
-                                 prsSource :: String,
-                                 prsLocalization :: Maybe String,
-                                 prsTags :: [String],
-                                 prsComment :: Maybe String }
-                                 deriving (Eq, Show)
+{- This is the parsed quote, as inputed by an user. -}
+data ParserQuote = ParserQuote { prsContent :: String
+                               , prsSource :: String
+                               , prsLocalization :: Maybe String
+                               , prsTags :: [String]
+                               , prsAuthors' :: [String]
+                               , prsComment :: Maybe String }
+                               deriving (Eq, Show)
 
-data LinkedParserQuote = LinkedQuote { prsQuote :: ParserQuote,
-                                       sourcePk :: Integer }
+{- This is the linked quote, with the source id and the
+id of authors. -}
+data LinkedParserQuote = LinkedQuote { prsQuote :: ParserQuote
+                                     ,  sourcePk :: Integer }
                                        deriving (Eq, Show)

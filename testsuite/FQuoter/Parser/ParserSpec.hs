@@ -38,19 +38,22 @@ ttitle = "A tale of two cities"
 tquote = "It was the best of time, it was the worst of time"
 ttags = "((Classic, Incipit))"
 tcomment = "Come on man, was it the worst or the best ? Make up your mind !"
+tauthor = "Dickens"
 
 insertIncipit1 = "insert quote \"" ++ tquote ++ "\" in " ++ ttitle
 insertIncipit2 =  insertIncipit1 ++ " at page 2"
 insertIncipit3 = insertIncipit1 ++ " " ++ ttags
 insertIncipit4 = insertIncipit1 ++ " [[" ++ tcomment ++ "]]"
+insertIncipit5 = insertIncipit1 ++ " by Dickens"
 
 testcase1_quote = "In ways that need not be doctrinal, strong poems are always omens of resurrection."
 testcase1 = "insert quote \"" ++ testcase1_quote ++ "\" in anxiety at page xxiv"
 
-correctIncipit1 = Insert $ PQuote $ ParserQuote tquote ttitle Nothing [] Nothing
-correctIncipit2 = Insert $ PQuote $ ParserQuote tquote ttitle (Just "page 2") [] Nothing
-correctIncipit3 = Insert $ PQuote $ ParserQuote tquote ttitle Nothing ["Classic", "Incipit"] Nothing
-correctIncipit4 = Insert $ PQuote $ ParserQuote tquote ttitle Nothing [] (Just tcomment)
+correctIncipit1 = Insert $ PQuote $ ParserQuote tquote ttitle Nothing [] [] Nothing
+correctIncipit2 = Insert $ PQuote $ ParserQuote tquote ttitle (Just "page 2") [] [] Nothing
+correctIncipit3 = Insert $ PQuote $ ParserQuote tquote ttitle Nothing ["Classic", "Incipit"] [] Nothing
+correctIncipit4 = Insert $ PQuote $ ParserQuote tquote ttitle Nothing [] [] (Just tcomment)
+correctIncipit5 = Insert $ PQuote $ ParserQuote tquote ttitle Nothing [] ["Dickens"] Nothing
 
 correcttestcase1 = Insert $ PQuote $ ParserQuote testcase1_quote "anxiety" (Just "page xxiv") [] Nothing
 

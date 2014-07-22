@@ -115,8 +115,9 @@ lookUp :: (IConnection c) => c
                                                 -> DBType 
                                                 -> SearchTerm 
                                                 -> IO [[SqlValue]]
-lookUp conn t st = quickQuery' conn squery (searchArray squery st)
-    where squery = getSearch t st
+lookUp conn t term@(ByAssociation typ id) = quickQuery' conn (getSearch t term) ([toSql id])
+lookUp conn t st = quickQuery' conn sQuery (searchArray sQuery st)
+    where sQuery = getSearch t st
 
 runAssociate :: (IConnection c) => c -> Query -> [Integer] -> IO Integer
 runAssociate conn query = run conn query . (:) SqlNull . map toSql
