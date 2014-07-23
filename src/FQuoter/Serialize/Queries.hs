@@ -55,14 +55,14 @@ queryFor (QSearch DBQuote (ByName _) )
     ="SELECT q.id_quote, q.localization, q.content, q.comment, s.title, a.first_name,\
      \ a.last_name, a.surname, group_concat (t.name) FROM Quote q\
      \ LEFT JOIN Source s ON q.related_source = s.id_source\
-     \ AND q.content like ?\
      \ LEFT JOIN Quote_Authors qa ON qa.related_quote = q.id_quote\
      \ LEFT JOIN Author a ON qa.related_author = a.id_author\
      \ LEFT JOIN Quote_Tags qt ON qt.related_quote = q.id_quote\
-     \ LEFT JOIN Tag t ON t.id_tag = qt.related_tag"
+     \ LEFT JOIN Tag t ON t.id_tag = qt.related_tag\
+     \ WHERE q.content like ?"
 queryFor (QSearch DBAuthor (ByAssociation (DBSource, DBAuthor) _)) =
     "SELECT a.* FROM Source_Authors sa LEFT JOIN Author a\
-    \ ON sa.related_author = a.id_author AND sa.related_source = ?"
+    \ ON sa.related_author = a.id_author WHERE sa.related_source = ?"
 queryFor (QUpdate DBAuthor) = "UPDATE author SET first_name = ?, last_name = ?, surname = ? WHERE id_author = ?"
 queryFor (QDelete DBAuthor (ById _)) = "DELETE FROM Author id_author = ?"
 queryFor (QAssociate DBSource DBAuthor) = "INSERT INTO Source_Authors VALUES (?,?,?)"
