@@ -41,6 +41,7 @@ library
                        ,FQuoter.Serialize.Shortcuts
                        ,FQuoter.Parser.Parser
                        ,FQuoter.Parser.ParserTypes
+                       ,FQuoter.Serialize.Queries
     build-depends:      base >=4.6 && <4.7, containers >=0.5 && <0.6
                        ,parsec
                        ,mtl >= 2.2.1
