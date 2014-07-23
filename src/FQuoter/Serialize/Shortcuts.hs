@@ -22,13 +22,13 @@ import FQuoter.Serialize.Queries
 import FQuoter.Quote
 
 data DBError = NonExistingDataError String
-             | AmbiguousDataError [SerializedType]
+             | AmbiguousDataError String [SerializedType]
              deriving(Eq)
 
 instance Show DBError where
-    show (NonExistingDataError s) = s
-    show (AmbiguousDataError s) = 
-        "Ambiguous input. Cannot choose between : " ++ (unlines . map show $ s)
+    show (NonExistingDataError s) = "Input " ++ s ++ " could not be matched in database."
+    show (AmbiguousDataError s sts) = 
+        "Ambiguous input : " ++ s ++ ".\nCannot choose between :\n" ++ (unlines . map show $ sts)
 
 type FalliableSerialization r m a = FreeT SerializationF (ReaderT r (ExceptT DBError m)) a
 
@@ -80,7 +80,7 @@ getPrimaryKey typ s
          case result of
             [] -> throwError $ NonExistingDataError s
             [dbv] -> return $ primaryKey dbv
-            res -> throwError $ AmbiguousDataError $ map value res
+            res -> throwError $ AmbiguousDataError s $ map value res
        
 validateAuthor :: (Monad m) => String -> FalliableSerialization r m Integer
 validateAuthor s = do
@@ -88,7 +88,7 @@ validateAuthor s = do
                     case result of
                         [] -> throwError $ NonExistingDataError s
                         [dbv] -> return $ primaryKey dbv
-                        res -> throwError $ AmbiguousDataError $ map value res
+                        res -> throwError $ AmbiguousDataError s $ map value res
 
 {- Searching throuh word will return a list of quotes,
 boxed in SerializedType. -}
@@ -114,7 +114,7 @@ readOrInsert typ term = do
                                 create $ (findConstructor typ) term
                                 lastInsert
                             [dbv] -> return $ primaryKey dbv
-                            dbvs -> throwError $ AmbiguousDataError $ map value dbvs
+                            dbvs -> throwError $ AmbiguousDataError term $ map value dbvs
     where
         findConstructor DBMetadataInfo = PMetadataInfo
         findConstructor DBTag = PTag
