@@ -46,11 +46,8 @@ insertAndDisplay a = do db <- getDB
                             Right _ -> do 
                                         runReaderT (process commitAction) db
                                         putStrLn $ "Inserted " ++ (show a)
-                            Left e -> displayException e >> runReaderT (process rollbackAction) db
+                            Left e -> print e >> runReaderT (process rollbackAction) db
 
-displayException :: DBError -> IO ()
-displayException (NonExistingDataError s) = putStrLn $ "The following author does not exist : " ++ s
-displayException (AmbiguousDataError s) = putStrLn $ "Too many potential authors with your input. There are the possible choices : " ++ (unlines s)
 
 handleError :: DBError -> IO ()
 handleError = putStrLn . show

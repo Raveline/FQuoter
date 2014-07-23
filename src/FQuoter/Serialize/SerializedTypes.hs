@@ -35,7 +35,7 @@ data SerializedType
     | SQuote Quote
     | SMetadataInfo MetadataInfo
     | SMetadataValue MetadataValue
-    deriving(Show)
+    deriving(Show, Eq)
 
 -- A simple container to hold a data type and
 -- its primary key in the database.
@@ -102,4 +102,4 @@ data SearchTerm
     deriving (Eq, Show)
 
 data DBType = DBAuthor | DBSource | DBMetadataInfo | DBMetadataValue | DBQuote | DBTag
-    deriving (Eq, Show)
+    deriving (Eq, Show, Ord)

@@ -22,11 +22,13 @@ import FQuoter.Serialize.Queries
 import FQuoter.Quote
 
 data DBError = NonExistingDataError String
-             | AmbiguousDataError [String]
+             | AmbiguousDataError [SerializedType]
+             deriving(Eq)
 
 instance Show DBError where
     show (NonExistingDataError s) = s
-    show (AmbiguousDataError s) = "Ambiguous input. Cannot choose between : " ++ unlines s
+    show (AmbiguousDataError s) = 
+        "Ambiguous input. Cannot choose between : " ++ (unlines . map show $ s)
 
 type FalliableSerialization r m a = FreeT SerializationF (ReaderT r (ExceptT DBError m)) a
 
@@ -78,7 +80,7 @@ getPrimaryKey typ s
          case result of
             [] -> throwError $ NonExistingDataError s
             [dbv] -> return $ primaryKey dbv
-            res -> throwError $ AmbiguousDataError $ map (show . value) res
+            res -> throwError $ AmbiguousDataError $ map value res
        
 validateAuthor :: (Monad m) => String -> FalliableSerialization r m Integer
 validateAuthor s = do
@@ -86,7 +88,7 @@ validateAuthor s = do
                     case result of
                         [] -> throwError $ NonExistingDataError s
                         [dbv] -> return $ primaryKey dbv
-                        res -> throwError $ AmbiguousDataError $ map (show . value) res
+                        res -> throwError $ AmbiguousDataError $ map value res
 
 {- Searching throuh word will return a list of quotes,
 boxed in SerializedType. -}
@@ -112,7 +114,7 @@ readOrInsert typ term = do
                                 create $ (findConstructor typ) term
                                 lastInsert
                             [dbv] -> return $ primaryKey dbv
-                            dbvs -> throwError $ AmbiguousDataError $ map (show . value) dbvs
+                            dbvs -> throwError $ AmbiguousDataError $ map value dbvs
     where
         findConstructor DBMetadataInfo = PMetadataInfo
         findConstructor DBTag = PTag
