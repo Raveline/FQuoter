@@ -58,6 +58,7 @@ hJames = Author (Just "Henry") (Just "James") Nothing
 hThoreau = Author (Just "Henry") (Just "Thoreau") Nothing
 -- Sources
 turnScrew = Source "The turn of the screw" [hJames] Map.empty
+henryAnthology = Source "An anthology of american Henrys" [hJames, hThoreau] Map.empty
 -- Quotes
 tsqCont = "One wouldn’t flatter a child"
 turnScrewQuote = Quote hJames turnScrew tsqCont Nothing ["aTag"] Nothing
@@ -68,6 +69,8 @@ prsHjames = PAuthor $ hJames
 ------------- Sources
 -- OK case
 prsTurn = PSource $ ParserSource "The turn of the screw" ["James"] Map.empty
+-- OK multi-author case
+prsHenrys = PSource $ ParserSource "An anthology of american Henrys" ["James", "Thoreau"] Map.empty
 -- Non existing author
 prsTurn' = PSource $ ParserSource "The turn of the screw" ["Jomes"] Map.empty
 -- Ambiguous author
@@ -87,7 +90,8 @@ oneMatch = "child"
 
 dict = Map.fromList [(DBAuthor
                     ,Map.fromList [("James", [DBValue 1 (SAuthor hJames)])
-                                  ,("Henry", ambiguousHenry)])
+                                  ,("Henry", ambiguousHenry)
+                                  ,("Thoreau", [DBValue 2 (SAuthor hThoreau)])])
                     ,(DBSource
                     ,Map.fromList [("screw", [DBValue 1 (SSource turnScrew)])])
                     ,(DBQuote
@@ -104,6 +108,8 @@ spec = do
                     run' NoValue (insert prsHjames)  `shouldBe` insertionSuccess
                 it "Insert a source normally." $ do
                     run' mockDB (insert prsTurn) `shouldBe` insertionSuccess
+                it "Insert a multi-authored source normally." $ do
+                    run' mockDB (insert prsHenrys) `shouldBe` insertionSuccess
                 it "Insert a quote normally." $ do
                     run' mockDB (insert prsdQuote) `shouldBe` insertionSuccess
             context "When DB is missing related authors, sources, etc." $ do
