@@ -26,7 +26,7 @@ data Source = Source  { title :: String
                       , metadata :: MetadataDictionary
                       } deriving (Eq)
 
-data Quote = Quote { author :: Author
+data Quote = Quote { author :: [Author]
                    , source :: Source
                    , content :: String
                    , location :: Maybe String
