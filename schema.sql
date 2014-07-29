@@ -30,6 +30,7 @@ CREATE TABLE Source_Authors (
 DROP TABLE IF EXISTS MetadataValue;
 CREATE TABLE MetadataValue (
     id_metadataValue    INTEGER PRIMARY KEY AUTOINCREMENT,
+    value               VARCHAR(255),
     related_metadata    INTEGER,
     related_source      INTEGER,
     FOREIGN KEY(related_metadata) REFERENCES MetadataInfo(id_metadataInfo),
