@@ -61,7 +61,7 @@ turnScrew = Source "The turn of the screw" [hJames] Map.empty
 henryAnthology = Source "An anthology of american Henrys" [hJames, hThoreau] Map.empty
 -- Quotes
 tsqCont = "One wouldn’t flatter a child"
-turnScrewQuote = Quote hJames turnScrew tsqCont Nothing ["aTag"] Nothing
+turnScrewQuote = Quote [hJames] turnScrew tsqCont Nothing ["aTag"] Nothing
 
 ----------------------- Parsed input
 -------------- Authors : always ok
@@ -121,7 +121,7 @@ spec = do
                     run' mockDB (insert prsdQuote'') `shouldBe` Left (NonExistingDataError "Jomes")
             context "When input is ambiguous" $ do
                 it "Throw an error when inserting a source with ambiguous authors" $ do
-                    run' mockDB (insert prsTurn'') `shouldBe` Left (AmbiguousDataError (map value ambiguousHenry))
+                    run' mockDB (insert prsTurn'') `shouldBe` Left (AmbiguousDataError "Henry" (map value ambiguousHenry))
         describe "Searching" $ do
             context "When user input does not match to anything" $ do
                 it "Return no value for a search by word" $ do
