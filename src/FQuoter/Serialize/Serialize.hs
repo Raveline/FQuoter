@@ -13,6 +13,7 @@ import Database.HDBC.Sqlite3
 import FQuoter.Quote
 import FQuoter.Parser.ParserTypes
 import FQuoter.Serialize.SerializedTypes
+import FQuoter.Serialize.Grouping
 import FQuoter.Serialize.Queries
 
 --- UTITILITES
@@ -75,7 +76,7 @@ process' (Free (Create t n)) = do c <- ask
                                   process n 
 process' (Free (Search t s n)) = do c <- ask
                                     v <- liftIO $ c ~> (t,s) 
-                                    v' <- mapM (return . unsqlizeST t) v
+                                    v' <- mapM (return . unsqlizeST t) (groupSql t v)
                                     process (n v')
 process' (Free (Associate pot pok n)) = do c <- ask
                                            liftIO $ c <~> (pot, pok)
@@ -105,7 +106,8 @@ conn <~> (ts, ks) = void(run conn query (SqlNull:sqlizePair ks))
             query = uncurry getAssociate $ ts
 
 (<~~) :: (IConnection c) => c -> (PairOfKeys, ParsedType) -> IO  ()
-conn <~~ (p,  t) = void(run conn (getInsert t) (SqlNull:sqlizePair p))
+conn <~~ (p,  t@(PMetadataValue s)) = void(run conn (getInsert t) (SqlNull:(toSql s):sqlizePair p))
+conn <~~ (p, _) = error "Unsupported type for Association2."
 
 sqlizePair :: PairOfKeys -> [SqlValue]
 sqlizePair (k1,k2) = [toSql k1, toSql k2]

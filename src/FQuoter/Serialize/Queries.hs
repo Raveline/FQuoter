@@ -38,7 +38,7 @@ queryFor (QInsert DBAuthor) = "INSERT INTO Author VALUES (?,?,?,?)"
 queryFor (QInsert DBSource) = "INSERT INTO Source VALUES (?, ?)"
 queryFor (QInsert DBMetadataInfo) = "INSERT INTO MetadataInfo VALUES (?, ?)"
 queryFor (QInsert DBTag) = "INSERT INTO Tag VALUES (?, ?)"
-queryFor (QInsert DBMetadataValue) = "INSERT INTO MetadataValue VALUES (?,?,?)"
+queryFor (QInsert DBMetadataValue) = "INSERT INTO MetadataValue VALUES (?,?,?,?)"
 queryFor (QInsert DBTag) = "INSERT INTO Tag VALUES (?,?)"
 queryFor (QInsert DBQuote) = "INSERT INTO Quote VALUES (?,?,?,?,?)"
 queryFor (QSearch DBAuthor (ByName _) ) 
@@ -49,13 +49,18 @@ queryFor (QSearch DBAuthor (ById _) )
     = "SELECT * FROM Author WHERE id_author = ?"
 queryFor (QSearch DBMetadataInfo (ByName _))
     = "SELECT * FROM MetadataInfo WHERE  name like ?"
+queryFor (QSearch DBTag (ByName _))
+    = "SELECT * FROM Tag WHERE name like ?"
 queryFor (QSearch DBSource (ByName _) ) 
     = "SELECT * FROM Source WHERE title like ?"
 queryFor (QSearch DBQuote (ByName _) )
-    ="SELECT q.id_quote, q.localization, q.content, q.comment, s.title, a.first_name,\
-     \ a.last_name, a.surname, group_concat (t.name) FROM Quote q\
+    ="SELECT q.id_quote, q.localization, q.content, q.comment, s.title, \
+     \ mi.name, mv.value, t.name, a.first_name, a.last_name, \
+     \ a.surname FROM Quote q\
      \ LEFT JOIN Source s ON q.related_source = s.id_source\
      \ LEFT JOIN Quote_Authors qa ON qa.related_quote = q.id_quote\
+     \ LEFT JOIN MetadataValue mv ON q.related_source = s.id_source\
+     \ LEFT JOIN MetadataInfo mi ON mv.related_metadata = mi.id_metadataInfo \
      \ LEFT JOIN Author a ON qa.related_author = a.id_author\
      \ LEFT JOIN Quote_Tags qt ON qt.related_quote = q.id_quote\
      \ LEFT JOIN Tag t ON t.id_tag = qt.related_tag\

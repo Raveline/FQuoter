@@ -13,18 +13,18 @@ type Query = String
 type PairOfKeys = (PrimaryKey, PrimaryKey)
 type PairOfTypes = (DBType, DBType)
 
--- Conversion utilities
-maybeStringToSql :: Maybe String -> SqlValue
-maybeStringToSql Nothing        = toSql ""
-maybeStringToSql (Just s)       = toSql s
+data SqlOutput = Single SqlValue
+               | Grouped [SqlOutput]
+               deriving (Eq, Show)
 
-sqlToMaybeString :: SqlValue -> Maybe String
-sqlToMaybeString s@(SqlByteString _)  = stringToMaybe $ fromSql s 
-    where
-        stringToMaybe :: String -> Maybe String
-        stringToMaybe [] = Nothing
-        stringToMaybe s = Just s
-sqlToMaybeString _ = Nothing
+data SearchTerm 
+    = ById Integer
+    | ByName String
+    | ByAssociation PairOfTypes Integer
+    deriving (Eq, Show)
+
+data DBType = DBAuthor | DBSource | DBMetadataInfo | DBMetadataValue | DBQuote | DBTag
+    deriving (Eq, Show, Ord)
 
 {- Container for serialized type. Can contain all the basic Quoter types.
 Is used to insert them and as a return for queries.
@@ -42,7 +42,25 @@ data SerializedType
 data DBValue a = DBValue { primaryKey :: PrimaryKey
                                      , value :: a
                          }
+-- Conversion utilities
+maybeStringToSql :: Maybe String -> SqlValue
+maybeStringToSql Nothing        = toSql ""
+maybeStringToSql (Just s)       = toSql s
 
+sqlOutputToMaybeString :: SqlOutput -> Maybe String
+sqlOutputToMaybeString (Single v) = sqlToMaybeString v
+sqlOutputToMaybeString (Grouped vs) = error "Cannot make a string out of a group"
+
+sqlToMaybeString :: SqlValue -> Maybe String
+sqlToMaybeString s@(SqlByteString _)  = stringToMaybe $ fromSql s 
+    where
+        stringToMaybe :: String -> Maybe String
+        stringToMaybe [] = Nothing
+        stringToMaybe s = Just s
+sqlToMaybeString _ = Nothing
+
+fromSql' (Single x) = fromSql x
+fromSql' (Grouped xs) = error "Cannot convert group."
 
 sqlize :: ParsedType -> [SqlValue]
 sqlize (PAuthor (Author fName lName sName)) = [SqlNull
@@ -65,41 +83,37 @@ sqlize (PTag tag) = sqlizeQuoterString tag
 
 sqlizeQuoterString s = [SqlNull, toSql s]
 
-unsqlizeST :: DBType -> [SqlValue] -> DBValue SerializedType
+unsqlizeST :: DBType -> [SqlOutput] -> DBValue SerializedType
 unsqlizeST DBAuthor (pkey:fName:lName:sName:[]) = 
-    DBValue (fromSql pkey) (SAuthor $ sqlValuesToAuthor fName lName sName)
+    DBValue (fromSql' pkey) (SAuthor $ sqlOutputsToAuthor fName lName sName)
 unsqlizeST DBAuthor _ = error $ "SQL error, result array not fitting for author."
 unsqlizeST DBSource (pkey:title:[]) = 
-    DBValue (fromSql pkey) (SSource $ sqlValuesToSource title)
+    DBValue (fromSql' pkey) (SSource $ sqlValuesToSource title)
 unsqlizeST DBSource _ = error $ "SQL error, result array not fitting for source."
-unsqlizeST DBQuote (pk:loc:cont:comm:title:afname:alname:anname:ltags:[]) = 
-    DBValue (fromSql pk)
+unsqlizeST DBQuote ((Grouped metadatas):(Grouped tags):(Grouped authors):pk:loc:cont:comm:title:[]) = 
+    DBValue (fromSql' pk)
             (SQuote quote')
-        where author' = sqlValuesToAuthor afname alname anname
-              source' = Source (fromSql title) [] Map.empty
-              toTagList = splitOn "," . fromSql $ ltags
-              quote' = Quote author' source' (fromSql cont) (sqlToMaybeString loc) (toTagList) (sqlToMaybeString comm)
+        where authors' = map groupToAuthor authors
+              source' = Source (fromSql' title) [] Map.empty -- TODO : handle metadatas
+              toTagList = map fromSql' tags
+              quote' = Quote authors' source' (fromSql' cont) (sqlOutputToMaybeString loc) (toTagList) (sqlOutputToMaybeString comm)
 unsqlizeST DBMetadataInfo (key:s:[]) = 
-    DBValue (fromSql key) (SMetadataInfo $ MetadataInfo $ sqlValuesToQuoterString s)
+    DBValue (fromSql' key) (SMetadataInfo $ MetadataInfo $ sqlValuesToQuoterString s)
 unsqlizeST DBMetadataValue (key:s:[]) =
-    DBValue (fromSql key) (SMetadataValue $ MetadataValue $ sqlValuesToQuoterString s)
+    DBValue (fromSql' key) (SMetadataValue $ MetadataValue $ sqlValuesToQuoterString s)
+unsqlizeST t xs = error $ "Couldn't handle " ++ (show t) ++ " with values : " ++ (show xs)
 
-sqlValuesToAuthor :: SqlValue -> SqlValue -> SqlValue -> Author
-sqlValuesToAuthor fname lname nname = Author (sqlToMaybeString fname)
-                                             (sqlToMaybeString lname)
-                                             (sqlToMaybeString nname)
+groupToAuthor :: SqlOutput -> Author
+groupToAuthor (Grouped (fn:ls:nn:[])) = sqlOutputsToAuthor fn ls nn
+groupToAuthor _ = error "Uncorrect grouping for author."
 
-sqlValuesToQuoterString :: SqlValue -> QuoterString
-sqlValuesToQuoterString = QuoterString . fromSql
+sqlOutputsToAuthor :: SqlOutput -> SqlOutput -> SqlOutput -> Author
+sqlOutputsToAuthor fname lname nname = Author (sqlOutputToMaybeString fname)
+                                             (sqlOutputToMaybeString lname)
+                                             (sqlOutputToMaybeString nname)
 
-sqlValuesToSource :: SqlValue -> Source
-sqlValuesToSource title = Source (fromSql title) [] Map.empty
+sqlValuesToQuoterString :: SqlOutput-> QuoterString
+sqlValuesToQuoterString = QuoterString . fromSql'
 
-data SearchTerm 
-    = ById Integer
-    | ByName String
-    | ByAssociation PairOfTypes Integer
-    deriving (Eq, Show)
-
-data DBType = DBAuthor | DBSource | DBMetadataInfo | DBMetadataValue | DBQuote | DBTag
-    deriving (Eq, Show, Ord)
+sqlValuesToSource :: SqlOutput -> Source
+sqlValuesToSource title = Source (fromSql' title) [] Map.empty
