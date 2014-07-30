@@ -3,6 +3,7 @@ import Database.HDBC
 import Database.HDBC.Sqlite3
 import Control.Monad.Except
 import Control.Monad.Reader
+import System.Environment.XDG.BaseDir (getUserDataDir, getUserDataFile)
 
 import FQuoter.Parser.ParserTypes
 import FQuoter.Parser.Parser
@@ -10,6 +11,8 @@ import FQuoter.Serialize.Serialize
 import FQuoter.Serialize.Shortcuts
 import FQuoter.Serialize.SerializedTypes
 import FQuoter.Serialize.Serialize
+
+configFolder = getUserDataDir "fquoter"
 
 main :: IO ()
 main = do
