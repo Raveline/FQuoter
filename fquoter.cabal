@@ -21,12 +21,13 @@ executable fquoter
   main-is:              Main.hs
   -- other-modules:       
   -- other-extensions:    
-  build-depends:        base >=4.6 && <4.7
+  build-depends:        base 
                        ,containers >=0.5 && <0.6
                        ,parsec
                        ,mtl >= 2.2.1
                        ,HDBC
                        ,HDBC-sqlite3
+                       ,directory
                        ,split
                        ,free
                        ,xdg-basedir
@@ -44,7 +45,9 @@ library
                        ,FQuoter.Parser.ParserTypes
                        ,FQuoter.Serialize.Queries
                        ,FQuoter.Serialize.Grouping
-    build-depends:      base >=4.6 && <4.7, containers >=0.5 && <0.6
+    build-depends:      base
+                       ,containers >=0.5 && <0.6
+                       ,directory
                        ,parsec
                        ,mtl >= 2.2.1
                        ,HDBC
@@ -57,7 +60,7 @@ test-suite Tests
     hs-source-dirs:     testsuite
     type:               exitcode-stdio-1.0
     main-is:            Spec.hs
-    build-depends:      base >=4.6 && <4.7
+    build-depends:      base 
                        ,containers >= 0.5 && <0.6
                        ,hspec
                        ,fquoter
