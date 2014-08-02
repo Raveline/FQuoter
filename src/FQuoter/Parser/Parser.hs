@@ -11,6 +11,7 @@ import Control.Applicative hiding (many, (<|>))
 
 import FQuoter.Quote hiding (string, Quote(..), content)
 import FQuoter.Parser.ParserTypes
+import FQuoter.Parser.ParsingErrors
 
 import qualified Data.Map as Map
 
@@ -33,18 +34,24 @@ parseInput = parse command "(unknown)"
 command = choice [ insert
                  , find
                  -- and others
-                 ]
+                 ] <?> errorNoParsing
 
 --------------
 -- Utilities
 --------------
+-- Shamelessly stolen from Christoph Schiessl's blog
+many1Till p end = do
+    notFollowedBy end
+    first <- p
+    rest <- manyTill p end
+    return (first:rest)
 
 authorsList = (specifically "by" *> (betweenQuotes <|> simpleString) `sepBy` (char ',' <* spaces))
 {- Get a simple word made of letters and/or numbers -}
 word = many1 (alphaNum <|> char '\'') <* spaces
 
 {- Read words till a special character or a word chaine is found -}
-words' = spaces >> word `manyTill` endWordChain
+words' = spaces >> word `many1Till` endWordChain
     where
         endWordChain = void (lookAhead symbols)
                     <|> void (lookAhead keywords)
@@ -77,11 +84,13 @@ variousValues = valuePair `sepBy` (char ',' <* spaces)
 --------------
 insert  = specifically "insert" >> choice [Insert <$> pAuthor
                                           ,Insert <$> pSource
-                                          ,Insert <$> pQuote]
+                                          ,Insert <$> pQuote
+                                          ,fail errorInsertNoType]
 
 find = (specifically "find" <|> specifically "search")
        >> choice [FindTags <$> betweenBrackets
-                 ,FindWord <$> simpleString]
+                 ,FindWord <$> simpleString
+                 ,fail errorSearchNoParam]
 
 delete = undefined
 

@@ -1,10 +1,12 @@
 module FQuoter.Parser.ParserSpec (main, spec) where
 
+import Text.ParserCombinators.Parsec.Error
 import qualified Data.Map as Map
 import Test.Hspec
 import FQuoter.Quote
 import FQuoter.Parser.Parser
 import FQuoter.Parser.ParserTypes
+import FQuoter.Parser.ParsingErrors
 
 
 main :: IO()
@@ -14,6 +16,10 @@ main = hspec spec
 parseInput' inp = case parseInput inp of
                     Right x -> x
                     Left n -> error (show n)
+
+parseError inp = case parseInput inp of
+                    Right _ -> error "Input did not fail !"
+                    Left a -> messageString . last . errorMessages $ a
 
 {- Author insertion checked values -}
 insertCharlesDickens = Insert $ PAuthor (Author (Just "Charles") (Just "Dickens") Nothing)
@@ -98,3 +104,11 @@ spec = do
             parseInput' "search time" `shouldBe` findTime
         it ("Parse a search by tags command.") $ do
             parseInput' "search [Classic, Incipit]" `shouldBe` findClassicIncipit
+    describe "Errors should get proper messages." $ do
+        context "If information is missing..." $ do
+            it "Explain expected input with no commands." $ do
+                parseError "" `shouldBe` errorNoParsing
+            it "Explain expected type with just insert." $ do
+                parseError "insert" `shouldBe` errorInsertNoType
+            it "Explain expected parameters with just search." $ do
+                parseError "search" `shouldBe` errorSearchNoParam

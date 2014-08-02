@@ -43,6 +43,7 @@ library
                        ,FQuoter.Serialize.Shortcuts
                        ,FQuoter.Parser.Parser
                        ,FQuoter.Parser.ParserTypes
+                       ,FQuoter.Parser.ParsingErrors
                        ,FQuoter.Serialize.Queries
                        ,FQuoter.Serialize.Grouping
     build-depends:      base
@@ -70,3 +71,4 @@ test-suite Tests
                        ,directory
                        ,free
                        ,mtl >= 2.2.1
+                       ,parsec
