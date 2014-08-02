@@ -8,6 +8,15 @@ import Data.Map
 
 type PMetadataDictionary = Map String String
 
+{- If the user does not want to type everything in the command-line,
+ - we will just get a "NotDefinedType", that will prompt a series of
+ - questions to defined our type. -}
+data NotDefinedType
+    = NDAuthor
+    | NDSource
+    | NDQuote
+    deriving (Eq, Show)
+
 data ParsedType
     = PAuthor Author
     | PSource ParserSource

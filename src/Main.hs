@@ -21,7 +21,8 @@ main = do
             Right c -> executeCommand config c
 
 executeCommand :: Config -> Action -> IO ()
-executeCommand c (Insert x) = insertAndDisplay c x
+executeCommand c (Insert (Right x)) = insertAndDisplay c x
+executeCommand c (Insert (Left nd)) = error "Not implemented."
 executeCommand c (FindWord w) = do db <- accessDB c
                                    result <- runExceptT $ runReaderT (process (searchWord w)) db
                                    case result of

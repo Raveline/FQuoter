@@ -21,7 +21,7 @@ import qualified Data.Map as Map
 
 -- Result of parsing.
 data Action 
-    = Insert ParsedType
+    = Insert (Either NotDefinedType ParsedType)
     | FindWord String
     | FindTags [String]
     deriving (Eq, Show)
@@ -97,10 +97,10 @@ delete = undefined
 -----------------
 -- Author parsing
 -----------------
-pAuthor = do
-            specifically "author"
-            auth <- try authorFullNameAndNick <|> authorFullNameOrNick
-            return $ PAuthor auth
+pAuthor = specifically "author"
+          *>  option (Left NDAuthor) 
+          (Right <$> (PAuthor <$> (try authorFullNameAndNick 
+                                  <|> authorFullNameOrNick)))
 
 authorFromStringArray :: [String] -> Author
 authorFromStringArray s
@@ -119,31 +119,40 @@ akaPseudonym = specifically "aka" >> simpleString
 -----------------
 -- Source parsing
 -----------------
-pSource = PSource <$> pSource'
-    where pSource' = ParserSource <$> title
-                                  <*> authorsList
-                                  <*> meta
-          title = (specifically "source" *> (betweenQuotes <* spaces))
-          meta = option Map.empty parseMetadata
+pSource = specifically "source"
+          *> option (Left NDSource) (Right <$>
+                            (PSource <$>
+                            (ParserSource 
+                            <$> title
+                            <*> authorsList
+                            <*> meta)))
+          where
+            title = betweenQuotes <* spaces
+            meta = option Map.empty parseMetadata
 
 parseMetadata = Map.fromList <$> between (char '{' <* spaces)(char '}' <* spaces) variousValues
 
 ----------------
 -- Quote parsing
 ----------------
-pQuote = PQuote <$> pQuote'
-    where pQuote' = ParserQuote <$> content
-                                <*> source
-                                <*> loc
-                                <*> tags
-                                <*> authors
-                                <*> comment
-          content = (specifically "quote" *> (betweenQuotes <* spaces))
-          source = (specifically "in" *> (simpleString <|> betweenQuotes))
-          authors = option [] authorsList
-          tags = option [] (pTags <* spaces)
-          loc = option Nothing (pLocation <* spaces) 
-          comment = option Nothing (pComment <* spaces)
+pQuote = specifically "quote" <* spaces
+         *> option (Left NDQuote) pQuote'
+            where
+                pQuote' = Right <$>
+                            (PQuote <$> 
+                            (ParserQuote 
+                            <$> content 
+                            <*> source 
+                            <*> loc 
+                            <*> tags 
+                            <*> authors 
+                            <*> comment))
+                content = betweenQuotes <* spaces
+                source = (specifically "in" *> (simpleString <|> betweenQuotes))
+                authors = option [] authorsList
+                tags = option [] (pTags <* spaces)
+                loc = option Nothing (pLocation <* spaces) 
+                comment = option Nothing (pComment <* spaces)
 
 pLocation = Just <$> (specifically "at" *> simpleString)
 
