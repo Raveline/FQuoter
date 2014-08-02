@@ -21,11 +21,16 @@ parseError inp = case parseInput inp of
                     Right _ -> error "Input did not fail !"
                     Left a -> messageString . last . errorMessages $ a
 
+insert' = Insert . Right
+insertA' = insert' . PAuthor
+insertS' = insert' . PSource
+insertQ' = insert' . PQuote
+
 {- Author insertion checked values -}
-insertCharlesDickens = Insert $ PAuthor (Author (Just "Charles") (Just "Dickens") Nothing)
-insertHomer = Insert $ PAuthor (Author Nothing Nothing (Just "Homer"))
-insertVirgil = Insert $ PAuthor (Author (Just "Vergilius Maro") (Just "Publius") (Just "Virgil"))
-insertTolkien = Insert $ PAuthor (Author (Just "John Ronald Reuel") (Just "Tolkien") Nothing)
+insertCharlesDickens = insertA' (Author (Just "Charles") (Just "Dickens") Nothing)
+insertHomer = insertA' (Author Nothing Nothing (Just "Homer"))
+insertVirgil = insertA' (Author (Just "Vergilius Maro") (Just "Publius") (Just "Virgil"))
+insertTolkien = insertA' (Author (Just "John Ronald Reuel") (Just "Tolkien") Nothing)
 
 {- Source insertion checked values -}
 tale2cities = "A tale of two cities"
@@ -35,9 +40,9 @@ metadata' = Map.fromList[("Published date", "1887")
 dickensSearchTerm = ParserSource tale2cities ["Dickens"] noMetadata
 sourceMetadata = ParserSource tale2cities ["Dickens"] metadata'
 sourceMultiauthor = ParserSource "All the President's Men" ["Bob Woodward", "Carl Bernstein"] noMetadata
-insertDickensSearchTerm = Insert $ PSource dickensSearchTerm
-insertSourceMetadatas = Insert $ PSource sourceMetadata
-insertMultiauthorSource = Insert $ PSource sourceMultiauthor
+insertDickensSearchTerm = insertS' dickensSearchTerm
+insertSourceMetadatas = insertS' sourceMetadata
+insertMultiauthorSource = insertS' sourceMultiauthor
 
 {- Parsing strings and values for quotes -}
 ttitle = "A tale of two cities"
@@ -55,13 +60,13 @@ insertIncipit5 = insertIncipit1 ++ " by Dickens"
 testcase1_quote = "In ways that need not be doctrinal, strong poems are always omens of resurrection."
 testcase1 = "insert quote \"" ++ testcase1_quote ++ "\" in anxiety at page xxiv"
 
-correctIncipit1 = Insert $ PQuote $ ParserQuote tquote ttitle Nothing [] [] Nothing
-correctIncipit2 = Insert $ PQuote $ ParserQuote tquote ttitle (Just "page 2") [] [] Nothing
-correctIncipit3 = Insert $ PQuote $ ParserQuote tquote ttitle Nothing ["Classic", "Incipit"] [] Nothing
-correctIncipit4 = Insert $ PQuote $ ParserQuote tquote ttitle Nothing [] [] (Just tcomment)
-correctIncipit5 = Insert $ PQuote $ ParserQuote tquote ttitle Nothing [] ["Dickens"] Nothing
+correctIncipit1 = insertQ' $ ParserQuote tquote ttitle Nothing [] [] Nothing
+correctIncipit2 = insertQ' $ ParserQuote tquote ttitle (Just "page 2") [] [] Nothing
+correctIncipit3 = insertQ' $ ParserQuote tquote ttitle Nothing ["Classic", "Incipit"] [] Nothing
+correctIncipit4 = insertQ' $ ParserQuote tquote ttitle Nothing [] [] (Just tcomment)
+correctIncipit5 = insertQ' $ ParserQuote tquote ttitle Nothing [] ["Dickens"] Nothing
 
-correcttestcase1 = Insert $ PQuote $ ParserQuote testcase1_quote "anxiety" (Just "page xxiv") [] [] Nothing
+correcttestcase1 = insertQ' $ ParserQuote testcase1_quote "anxiety" (Just "page xxiv") [] [] Nothing
 
 {- Search values -}
 findTime = FindWord "time"
