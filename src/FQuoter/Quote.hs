@@ -34,6 +34,10 @@ data Quote = Quote { author :: [Author]
                    , comment :: Maybe String
                    } deriving (Eq)
 
+lookupMetadata :: String -> Source -> Maybe String
+lookupMetadata s = fmap metadataValue . Map.lookup s' . metadata
+    where s' = MetadataInfo . QuoterString $ s
+
 instance Show Author where
     show (Author (Just f) (Just l) Nothing) = f ++ " " ++ l
     show (Author _ _ (Just s)) = s
