@@ -10,24 +10,24 @@ import FQuoter.Templating.Display
 main :: IO()
 main = hspec spec
 
-defaultTree =   [Every 
-                    (Or [One (Token [Capital] $ AuthorInfo AuthorLastName)
-                        ,One (Token [] $ ConstantString ", ")
-                        ,One (Token [Initial, Capital] $ AuthorInfo AuthorFirstName)]
-                        [One (Token [Capital] $ AuthorInfo AuthorNickName)])
-                , One (Token [] $ ConstantString " (")
-                 ,One (Token [] (SourceInfo $ SourceMetadata "Date"))
-                 ,One (Token [] $ ConstantString ") ")
-                 ,One (Token [Italics] $ (SourceInfo SourceTitle))
-                 ,One (Token [] $ ConstantString ". ")
-                 ,One (Token [] (SourceInfo $ SourceMetadata "Place"))
-                 ,One (Token [] $ ConstantString " : ")
-                 ,One (Token [] (SourceInfo $ SourceMetadata "Publisher"))
-                 ,One (Token [] $ ConstantString ".")]
+defaultTree =   [SomeAuthors All
+                    [Or [One [Capital] $ AuthorInfo AuthorLastName
+                        ,One [] (ConstantString ", ")
+                        ,One [Initial, Capital] $ AuthorInfo AuthorFirstName]
+                        [One [Capital] $ AuthorInfo AuthorNickName]]
+                , One [] $ ConstantString " ("
+                 ,One [] (SourceInfo $ SourceMetadata "Date")
+                 ,One [] $ ConstantString ") "
+                 ,One [Italics] $ (SourceInfo SourceTitle)
+                 ,One [] $ ConstantString ". "
+                 ,One [] (SourceInfo $ SourceMetadata "Place")
+                 ,One [] $ ConstantString " : "
+                 ,One [] (SourceInfo $ SourceMetadata "Publisher")
+                 ,One [] $ ConstantString "."]
 
-constantCaps = [One $ Token [Capital] (ConstantString "test")]
-constantInit = [One $ Token [Initial] (ConstantString "test")]
-constantCapsInit = [One $ Token [Capital, Initial] (ConstantString "test")]
+constantCaps = [One [Capital] (ConstantString "test")]
+constantInit = [One [Initial] (ConstantString "test")]
+constantCapsInit = [One [Capital, Initial] (ConstantString "test")]
 
 mtd :: (String, String) -> (MetadataInfo, MetadataValue)
 mtd (a,b) = (MetadataInfo . QuoterString $ a, MetadataValue . QuoterString $ b)
@@ -46,9 +46,9 @@ spec = do
         it "Apply capital modificator to write a word in full caps" $ do
             readTree constantCaps q1 `shouldBe` "TEST"
         it "Apply initial modificator to write only the first letter of a word" $ do
-            readTree constantInit q1 `shouldBe` "t"
+            readTree constantInit q1 `shouldBe` "t."
         it "Apply capital and initial to write both letters of a word" $ do
-            readTree constantCapsInit q1 `shouldBe` "T"      
+            readTree constantCapsInit q1 `shouldBe` "T."
     describe "Full quotes are to be displayed following the rules of the template." $ do
         it "Apply the default tree properly" $ do
             readTree defaultTree q1 `shouldBe` defaultDisplay
