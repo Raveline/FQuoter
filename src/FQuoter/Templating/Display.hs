@@ -34,16 +34,6 @@ data TokenModificator =
     | Initial
     | Italics
 
-data TokenType =
-    Authorship
-    | Sourceship
-    | Constant
-    deriving (Eq, Show)
-
-defaultTemplate = "currentDisplay:"
-    ++ "[{maj}%al, {maj,init}%af|{maj}%an]"
-    ++ "(%metaDate) {it}%t. %metaPlace:%metaPublisher"
-
 readTree :: [TokenNode] -> Quote -> String
 readTree q s = fromMaybe "" $ mapSeveralNodes evalNode q s
 
@@ -72,20 +62,13 @@ mapNodesAndItems :: (TokenNode -> a -> Maybe String) -> [TokenNode] -> [a] -> [M
 mapNodesAndItems f ts = map (mapSeveralNodes f ts)
 
 mapSeveralNodes :: (TokenNode -> a -> Maybe String) -> [TokenNode] -> a -> Maybe String
-mapSeveralNodes f t a = mconcat . map (flip f $ a) $ t
-
-mapSeveralItems :: (TokenNode -> a -> Maybe String) -> TokenNode -> [a] -> Maybe String
-mapSeveralItems f t = mconcat . map (f t)
+mapSeveralNodes f t a = mconcat . map (`f` a) $ t
 
 orNode :: (TokenNode -> a -> Maybe String) -> [TokenNode] -> [TokenNode] -> a -> Maybe String
 orNode f n1 n2 a = mapSeveralNodes f n1 a <|>  mapSeveralNodes f n2 a
     
-type DisplayTemplate = String
-display :: DisplayTemplate -> Quote -> String
-display t = undefined
-
 applyMods' :: [TokenModificator] -> Maybe String -> Maybe String
-applyMods' mods = fmap ((flip applyMods) mods)
+applyMods' mods = fmap (`applyMods` mods)
 applyMods :: String -> [TokenModificator] -> String
 applyMods = foldl (flip modify)
 
