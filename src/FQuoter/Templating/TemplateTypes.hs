@@ -7,6 +7,7 @@ data TokenNode =
     One [TokenModificator] TokenContent
     | SomeAuthors Cardinality [TokenNode]
     | Or [TokenNode] [TokenNode]
+    | Condition TokenContent [TokenNode]
     deriving (Eq, Show)
 
 data TokenContent =

@@ -11,11 +11,14 @@ import FQuoter.Templating.TemplateTypes
 parseTemplate = parse (many parseToken) ""
 
 parseToken :: GenParser Char st TokenNode
-parseToken = parseMany <|> parseOr <|> parseOne 
+parseToken = parseMany <|> parseOr <|> parseConditional <|> parseOne 
 
 parseOr :: GenParser Char st TokenNode
 parseOr = char '|' *> (Or <$> tillPipe <*> tillPipe)
     where tillPipe = parseToken `manyTill` (char '|')
+
+parseConditional :: GenParser Char st TokenNode
+parseConditional = Condition <$> (char '?' *> parseContent) <*> parseToken `manyTill` (char '?')
 
 parseOne :: GenParser Char st TokenNode
 parseOne = One <$> parseMods <*> ( (char '%' *> parseContent) <|> parseConstant)
@@ -45,7 +48,7 @@ parseMod = choice [string "cap" *> return Capital
                   ,try $ string "init" *> return Initial
                   ,string "it" *> return Italics]
 
-keyChar = "%{}[]|"
+keyChar = "%{}[]|?"
 
 parseConstant :: GenParser Char st TokenContent
 parseConstant = ConstantString <$> many1 (noneOf keyChar)

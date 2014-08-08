@@ -25,16 +25,18 @@ simpleConstant = "constant!"
 simpleConstant' = [One [] $ ConstantString simpleConstant]
 
 defaultTemplate = "2[|{cap}%al, {init,cap}%af|{cap}%an|]"
-    ++ " (%metaDate) {it}%t. %metaPlace : %metaPublisher."
+    ++ " ?metaDate(%metaDate) ?{it}%t. %metaPlace : %metaPublisher."
 
 defaultTree =   [SomeAuthors (Only 2)
                     [Or [One [Capital] $ AuthorInfo AuthorLastName
                         ,One [] (ConstantString ", ")
                         ,One [Initial, Capital] $ AuthorInfo AuthorFirstName]
                         [One [Capital] $ AuthorInfo AuthorNickName]]
-                , One [] $ ConstantString " ("
-                 ,One [] (SourceInfo $ SourceMetadata "Date")
-                 ,One [] $ ConstantString ") "
+                 ,One [] $ ConstantString " "
+                 ,Condition (SourceInfo $ SourceMetadata "Date")
+                    [One [] $ ConstantString "("
+                    ,One [] (SourceInfo $ SourceMetadata "Date")
+                    ,One [] $ ConstantString ") "]
                  ,One [Italics] $ (SourceInfo SourceTitle)
                  ,One [] $ ConstantString ". "
                  ,One [] (SourceInfo $ SourceMetadata "Place")

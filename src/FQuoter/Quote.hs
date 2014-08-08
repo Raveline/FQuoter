@@ -34,6 +34,9 @@ data Quote = Quote { author :: [Author]
                    , comment :: Maybe String
                    } deriving (Eq)
 
+mainAuthor :: Quote -> Author
+mainAuthor = head . author
+
 lookupMetadata :: String -> Source -> Maybe String
 lookupMetadata s = fmap metadataValue . Map.lookup s' . metadata
     where s' = MetadataInfo . QuoterString $ s

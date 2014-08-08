@@ -17,9 +17,11 @@ defaultTree =   [SomeAuthors All
                         ,One [] (ConstantString ", ")
                         ,One [Initial, Capital] $ AuthorInfo AuthorFirstName]
                         [One [Capital] $ AuthorInfo AuthorNickName]]
-                , One [] $ ConstantString " ("
-                 ,One [] (SourceInfo $ SourceMetadata "Date")
-                 ,One [] $ ConstantString ") "
+                , One [] (ConstantString " ")
+                , Condition (SourceInfo $ SourceMetadata "Date")
+                    [One [] $ ConstantString "("
+                    ,One [] (SourceInfo $ SourceMetadata "Date")
+                    ,One [] $ ConstantString ") "]
                  ,One [Italics] $ (SourceInfo SourceTitle)
                  ,One [] $ ConstantString ". "
                  ,One [] (SourceInfo $ SourceMetadata "Place")
@@ -39,9 +41,14 @@ turnOfTheScrew = Source "The turn of a screw" [henryJames]
                         (Map.fromList [mtd("Date", "1898")
                                      ,mtd("Place", "London")
                                      ,mtd("Publisher", "William Heinemann")])
+incompleteTurnOfTheScrew = Source "The turn of a screw" [henryJames] 
+                        (Map.fromList [mtd("Place", "London")
+                                     ,mtd("Publisher", "William Heinemann")])
 q1 = Quote [henryJames] turnOfTheScrew "" (Just "p.3") [] Nothing
+q2 = Quote [henryJames] incompleteTurnOfTheScrew "" (Just "p.3") [] Nothing
 
 defaultDisplay = "JAMES, H. (1898) *The turn of a screw*. London : William Heinemann."
+defaultDisplay2 = "JAMES, H. *The turn of a screw*. London : William Heinemann."
 
 spec = do
     describe "String should be modified according to Modificators" $ do
@@ -54,3 +61,5 @@ spec = do
     describe "Full quotes are to be displayed following the rules of the template." $ do
         it "Apply the default tree properly" $ do
             readTree defaultTree q1 `shouldBe` defaultDisplay
+        it "Apply the default tree properly, even with missing information" $ do
+            readTree defaultTree q2 `shouldBe` defaultDisplay2
