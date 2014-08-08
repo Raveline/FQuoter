@@ -3,8 +3,10 @@ module FQuoter.Templating.DisplaySpec (main, spec) where
 import Text.ParserCombinators.Parsec.Error
 import qualified Data.Map as Map
 import Test.Hspec
+
 import FQuoter.Quote
 import FQuoter.Templating.Display
+import FQuoter.Templating.TemplateTypes
 
 
 main :: IO()

@@ -1,4 +1,5 @@
 module FQuoter.Templating.Display
+( readTree )
 where
 
 import Data.Maybe
@@ -6,33 +7,9 @@ import Control.Applicative
 import Data.Monoid hiding (All)
 import Data.Char
 import qualified Data.Map as Map
+
 import FQuoter.Quote
-
-data Cardinality = All | Only Int
-
-data TokenNode =
-    One [TokenModificator] TokenContent
-    | SomeAuthors Cardinality [TokenNode]
-    | Or [TokenNode] [TokenNode]
-
-data TokenContent =
-    AuthorInfo TokenAuthorInfo
-    | SourceInfo TokenSourceInfo
-    | ConstantString String
-
-data TokenSourceInfo =
-    SourceTitle
-    | SourceMetadata String
-
-data TokenAuthorInfo =
-    AuthorFirstName
-    | AuthorLastName
-    | AuthorNickName
-
-data TokenModificator =
-    Capital
-    | Initial
-    | Italics
+import FQuoter.Templating.TemplateTypes
 
 readTree :: [TokenNode] -> Quote -> String
 readTree q s = fromMaybe "" $ mapSeveralNodes evalNode q s
