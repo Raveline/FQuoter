@@ -1,7 +1,7 @@
 # FQuoter
 ## Current status
 Coding. Come back later.
-(Current progress : around 10%, I'd say)
+(Current progress : a bit below 50%, I'd say)
 
 ## Goal
 * FQuoter is a simple command-line quotation manager.
