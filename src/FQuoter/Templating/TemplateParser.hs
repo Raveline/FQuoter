@@ -3,6 +3,7 @@ module FQuoter.Templating.TemplateParser
 where
 
 import Text.ParserCombinators.Parsec
+import Text.ParserCombinators.Parsec.Number
 import Control.Applicative hiding ((<|>), many)
 import Control.Monad
 import FQuoter.Templating.TemplateTypes
@@ -10,7 +11,7 @@ import FQuoter.Templating.TemplateTypes
 parseTemplate = parse (many parseToken) ""
 
 parseToken :: GenParser Char st TokenNode
-parseToken = parseOr <|> parseOne <|> parseMany
+parseToken = parseMany <|> parseOr <|> parseOne 
 
 parseOr :: GenParser Char st TokenNode
 parseOr = char '|' *> (Or <$> tillPipe <*> tillPipe)
@@ -26,7 +27,8 @@ parseMods = option [] bracketContent
         bracketContent = between (char '{') (char '}') (parseMod `sepBy` (char ','))
 
 parseMany :: GenParser Char st TokenNode
-parseMany =  SomeAuthors <$> (return All) <*> parseTokens
+parseMany =  SomeAuthors <$> (( Only <$> nat ) <|> return All) 
+                         <*> parseTokens 
     where
         parseTokens :: GenParser Char st [TokenNode]
         parseTokens = between (char '[') (char ']') (many parseToken)

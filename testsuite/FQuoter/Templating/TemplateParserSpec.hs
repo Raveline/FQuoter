@@ -24,10 +24,10 @@ simpleMany' = [SomeAuthors All [One [] $ AuthorInfo AuthorLastName]]
 simpleConstant = "constant!"
 simpleConstant' = [One [] $ ConstantString simpleConstant]
 
-defaultTemplate = "[|{cap}%al, {init,cap}%af|{cap}%an|]"
+defaultTemplate = "2[|{cap}%al, {init,cap}%af|{cap}%an|]"
     ++ " (%metaDate) {it}%t. %metaPlace : %metaPublisher."
 
-defaultTree =   [SomeAuthors All
+defaultTree =   [SomeAuthors (Only 2)
                     [Or [One [Capital] $ AuthorInfo AuthorLastName
                         ,One [] (ConstantString ", ")
                         ,One [Initial, Capital] $ AuthorInfo AuthorFirstName]

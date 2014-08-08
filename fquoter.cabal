@@ -24,6 +24,7 @@ executable fquoter
   build-depends:        base 
                        ,containers >=0.5 && <0.6
                        ,parsec
+                       ,parsec-numbers
                        ,mtl >= 2.2.1
                        ,HDBC
                        ,HDBC-sqlite3
@@ -53,6 +54,7 @@ library
                        ,containers >=0.5 && <0.6
                        ,directory
                        ,parsec
+                       ,parsec-numbers
                        ,mtl >= 2.2.1
                        ,HDBC
                        ,HDBC-sqlite3
