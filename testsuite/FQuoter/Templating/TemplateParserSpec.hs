@@ -5,6 +5,7 @@ import Test.Hspec
 
 import FQuoter.Templating.TemplateTypes
 import FQuoter.Templating.TemplateParser
+import FQuoter.Config.Config
 
 main :: IO()
 main = hspec spec
@@ -24,8 +25,7 @@ simpleMany' = [SomeAuthors All [One [] $ AuthorInfo AuthorLastName]]
 simpleConstant = "constant!"
 simpleConstant' = [One [] $ ConstantString simpleConstant]
 
-defaultTemplate = "2[|{cap}%al, {init,cap}%af|{cap}%an|]"
-    ++ " ?metaDate(%metaDate) ?{it}%t. %metaPlace : %metaPublisher."
+defaultTemplate = currentTemplate $ buildDefaultConfig
 
 defaultTree =   [SomeAuthors (Only 2)
                     [Or [One [Capital] $ AuthorInfo AuthorLastName

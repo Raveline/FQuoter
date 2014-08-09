@@ -10,6 +10,8 @@ import FQuoter.Serialize.Shortcuts
 import FQuoter.Serialize.SerializedTypes
 import FQuoter.Serialize.Serialize
 import FQuoter.Config.Config
+import FQuoter.Templating.TemplateParser
+import FQuoter.Templating.Display
 
 
 main :: IO ()
@@ -27,20 +29,27 @@ executeCommand c (FindWord w) = do db <- accessDB c
                                    result <- runExceptT $ runReaderT (process (searchWord w)) db
                                    case result of
                                         Left _ -> error "Should not happen. I think ?"
-                                        Right qs -> displayQuotes qs
+                                        Right qs -> displayQuotes c qs
 executeCommand c (FindTags ts) = do db <- accessDB c
                                     result <- runExceptT $ runReaderT (process (searchTags ts)) db
                                     case result of
                                         Left _ -> error "Should not happen. I think ?"
-                                        Right qs -> displayQuotes qs
+                                        Right qs -> displayQuotes c qs
 executeCommand _ _ = putStrLn "Not implemented yet."
 
-displayQuotes :: [SerializedType] -> IO ()
-displayQuotes = mapM_ displayQuote
+displayQuotes :: Config -> [SerializedType] -> IO ()
+displayQuotes conf st 
+    = case parser of
+            Left err -> do putStrLn "Configuration file faulty."
+                           putStrLn (show err)
+                           putStrLn "Template cannot be parsed."
+                           putStrLn "Falling back on default config."
+                           displayQuotes buildDefaultConfig st
+            Right x -> mapM_ (displayQuote x) st
     where
-        displayQuote :: SerializedType -> IO ()
-        displayQuote (SQuote q) = print q
-        displayQuotes _ = error "Not a quote. This should not happen !"
+        parser = parseTemplate (currentTemplate conf)
+        displayQuote template (SQuote q) = putStrLn $ readTree template q
+        displayQuotes _ _ = error "Not a quote. This should not happen !"
 
 insertAndDisplay :: Config -> ParsedType -> IO ()
 insertAndDisplay c a = do db <- accessDB c

@@ -47,6 +47,7 @@ library
                        ,FQuoter.Parser.ParsingErrors
                        ,FQuoter.Serialize.Queries
                        ,FQuoter.Serialize.Grouping
+                       ,FQuoter.Config.Config
                        ,FQuoter.Templating.TemplateTypes
                        ,FQuoter.Templating.Display
                        ,FQuoter.Templating.TemplateParser

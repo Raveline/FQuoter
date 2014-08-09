@@ -1,6 +1,7 @@
 module FQuoter.Config.Config 
-( Config
+( Config (..)
 , accessDB 
+, buildDefaultConfig
 , readConfig )
 where
 
@@ -35,16 +36,22 @@ readConfig = do path <- getUserDataDir configFolder
                 case fileExist of
                     True -> readConfig' pathConfig
                     False -> do
-                        buildDefaultConfig pathConfig
+                        writeConfig buildDefaultConfig pathConfig
                         readConfig' pathConfig
 
-buildDefaultConfig :: String -> IO ()
-buildDefaultConfig path = writeFile path content
-    where defaultCurrent = "currentDB:defaultDB"
-          defaultTemplate = "currentDisplay:"
-                          ++ "[{maj}(%al), {maj,init}(%af)|{maj}(%an)]"
-                          ++ "(%metaDate) {it}(%t). %metaPlace:%metaPublisher"
-          content = unlines [defaultCurrent, defaultTemplate]
+writeConfig :: Config -> FilePath -> IO ()
+writeConfig conf path = writeFile path content
+    where
+        content = unlines [current, template]
+        current = "currentDB:" ++ (currentDB conf)
+        template = "currentDisplay:" ++ (currentTemplate conf)
+
+buildDefaultConfig :: Config
+buildDefaultConfig = Config defaultCurrent defaultTemplate
+    where
+        defaultCurrent = "defaultDB"
+        defaultTemplate = "2[|{cap}%al, {init,cap}%af|{cap}%an|]"
+            ++ " ?metaDate(%metaDate) ?{it}%t. %metaPlace : %metaPublisher."
 
 readConfig' :: FilePath -> IO Config
 readConfig' path = do
