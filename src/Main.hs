@@ -1,4 +1,5 @@
 import System.Environment
+import System.Console.Haskeline
 import Database.HDBC
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -15,12 +16,14 @@ import FQuoter.Templating.Display
 
 
 main :: IO ()
-main = do
-        args <- getArgs
-        config <- readConfig 
-        case parseInput(unwords args) of 
-            Left s -> print s
-            Right c -> executeCommand config c
+main = runInputT defaultSettings interpreter
+
+interpreter :: InputT IO ()
+interpreter = do args <- liftIO $ getArgs
+                 config <- liftIO $ readConfig 
+                 case parseInput(unwords args) of 
+                    Left s -> outputStrLn $ show s
+                    Right c -> liftIO $ executeCommand config c
 
 executeCommand :: Config -> Action -> IO ()
 executeCommand c (Insert (Right x)) = insertAndDisplay c x
