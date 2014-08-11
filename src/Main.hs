@@ -1,9 +1,10 @@
+import Data.List hiding (insert)
 import System.Environment
 import System.Console.Haskeline
-import Database.HDBC
 import Control.Monad.Except
 import Control.Monad.Reader
 
+import FQuoter.Quote
 import FQuoter.Parser.ParserTypes
 import FQuoter.Parser.Parser
 import FQuoter.Serialize.Serialize
@@ -53,7 +54,16 @@ displayQuotes conf st
             Right x -> mapM_ (displayQuote x) st
     where
         parser = parseTemplate (currentTemplate conf)
-        displayQuote template (SQuote q) = outputStrLn $ readTree template q
+        -- This is rather ugly.
+        -- TODO : replace it with a pretty list of maybes
+        displayQuote template (SQuote q) =  do outputLine
+                                               outputStrLn $ "\"" ++ (content q) ++ "\""
+                                               outputStrLn ""
+                                               outputStrLn $ readTree template q
+                                               outputMaybe $ comment q
+                                               outputStrLn ""
+                                               outputArray "Tags : " "No tags" . tags $ q
+                                               outputLine
         displayQuotes _ _ = error "Not a quote. This should not happen !"
 
 insertAndDisplay :: Config -> ParsedType -> IO ()
@@ -67,3 +77,12 @@ insertAndDisplay c a = do db <- accessDB c
 
 handleError :: DBError -> IO ()
 handleError = putStrLn . show
+
+outputLine = outputStrLn $ take 80 $ repeat '-' 
+outputMaybe Nothing = return ()
+outputMaybe (Just s) = outputStrLn s
+outputArray :: String -> String -> [String] -> InputT IO ()
+outputArray pres def [] = outputStrLn def
+outputArray pres def xs = outputStrLn arrayString
+    where
+        arrayString = (++) pres (concat . intersperse "," $ xs)
