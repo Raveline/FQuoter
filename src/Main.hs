@@ -30,17 +30,15 @@ interpreter = do args <- liftIO $ getArgs
 executeCommand :: Config -> Action -> InputT IO ()
 executeCommand c (Insert (Right x)) = liftIO $ insertAndDisplay c x
 executeCommand c (Insert (Left nd)) = shellForNotDefined nd >>= executeCommand c . Insert . Right
-executeCommand c (FindWord w) = do db <- liftIO $ accessDB c
-                                   result <- liftIO $ runExceptT $ runReaderT (process (searchWord w)) db
-                                   case result of
-                                        Left _ -> error "Should not happen. I think ?"
-                                        Right qs -> displayQuotes c qs
-executeCommand c (FindTags ts) = do db <- liftIO $ accessDB c
-                                    result <- liftIO $ runExceptT $ runReaderT (process (searchTags ts)) db
-                                    case result of
-                                        Left _ -> error "Should not happen. I think ?"
-                                        Right qs -> displayQuotes c qs
+executeCommand c (FindWord w) = executeSearch c (searchWord w)
+executeCommand c (FindTags ts) = executeSearch c (searchTags ts)
 executeCommand _ _ = outputStrLn "Not implemented yet."
+
+executeSearch c f = do db <- liftIO $ accessDB c
+                       result <- liftIO $ runExceptT $ runReaderT (process f) db
+                       case result of
+                            Left _ -> error "Should not happen. I think ?"
+                            Right qs -> displayQuotes c qs
 
 displayQuotes :: Config -> [SerializedType] -> InputT IO ()
 displayQuotes conf st 
