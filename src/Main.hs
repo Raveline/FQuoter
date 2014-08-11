@@ -1,4 +1,6 @@
+
 import Data.List hiding (insert)
+import Data.Maybe
 import System.Environment
 import System.Console.Haskeline
 import Control.Monad.Except
@@ -52,17 +54,20 @@ displayQuotes conf st
             Right x -> mapM_ (displayQuote x) st
     where
         parser = parseTemplate (currentTemplate conf)
-        -- This is rather ugly.
-        -- TODO : replace it with a pretty list of maybes
-        displayQuote template (SQuote q) =  do outputLine
-                                               outputStrLn $ "\"" ++ (content q) ++ "\""
-                                               outputStrLn ""
-                                               outputStrLn $ readTree template q
-                                               outputMaybe $ comment q
-                                               outputStrLn ""
-                                               outputArray "Tags : " "No tags" . tags $ q
-                                               outputLine
+
+displayQuote template (SQuote q) = mapM_ outputStrLn $ catMaybes displayed
+    where
+        displayed = [Just line
+                    , Just $ "\"" ++ (content q) ++ "\""
+                    , Just ""
+                    , Just $ readTree template q
+                    , comment q 
+                    , Just ""
+                    , outputTagsArray $ tags q
+                    , Just line]
         displayQuotes _ _ = error "Not a quote. This should not happen !"
+        outputTagsArray [] = Nothing
+        outputTagsArray xs = Just $ "Tags : " ++ (concat . intersperse "," $ xs)
 
 insertAndDisplay :: Config -> ParsedType -> IO ()
 insertAndDisplay c a = do db <- accessDB c
@@ -76,11 +81,6 @@ insertAndDisplay c a = do db <- accessDB c
 handleError :: DBError -> IO ()
 handleError = putStrLn . show
 
-outputLine = outputStrLn $ take 80 $ repeat '-' 
+line = take 80 $ repeat '-' 
 outputMaybe Nothing = return ()
 outputMaybe (Just s) = outputStrLn s
-outputArray :: String -> String -> [String] -> InputT IO ()
-outputArray pres def [] = outputStrLn def
-outputArray pres def xs = outputStrLn arrayString
-    where
-        arrayString = (++) pres (concat . intersperse "," $ xs)
