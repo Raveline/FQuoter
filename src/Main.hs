@@ -13,6 +13,7 @@ import FQuoter.Serialize.Serialize
 import FQuoter.Config.Config
 import FQuoter.Templating.TemplateParser
 import FQuoter.Templating.Display
+import FQuoter.Repl
 
 
 main :: IO ()
@@ -23,35 +24,36 @@ interpreter = do args <- liftIO $ getArgs
                  config <- liftIO $ readConfig 
                  case parseInput(unwords args) of 
                     Left s -> outputStrLn $ show s
-                    Right c -> liftIO $ executeCommand config c
+                    Right c -> executeCommand config c
 
-executeCommand :: Config -> Action -> IO ()
-executeCommand c (Insert (Right x)) = insertAndDisplay c x
-executeCommand c (Insert (Left nd)) = error "Not implemented."
-executeCommand c (FindWord w) = do db <- accessDB c
-                                   result <- runExceptT $ runReaderT (process (searchWord w)) db
+executeCommand :: Config -> Action -> InputT IO ()
+executeCommand c (Insert (Right x)) = liftIO $ insertAndDisplay c x
+executeCommand c (Insert (Left nd)) = shellForNotDefined nd >>= executeCommand c . Insert . Right
+executeCommand c (FindWord w) = do db <- liftIO $ accessDB c
+                                   result <- liftIO $ runExceptT $ runReaderT (process (searchWord w)) db
                                    case result of
                                         Left _ -> error "Should not happen. I think ?"
                                         Right qs -> displayQuotes c qs
-executeCommand c (FindTags ts) = do db <- accessDB c
-                                    result <- runExceptT $ runReaderT (process (searchTags ts)) db
+executeCommand c (FindTags ts) = do db <- liftIO $ accessDB c
+                                    result <- liftIO $ runExceptT $ runReaderT (process (searchTags ts)) db
                                     case result of
                                         Left _ -> error "Should not happen. I think ?"
                                         Right qs -> displayQuotes c qs
-executeCommand _ _ = putStrLn "Not implemented yet."
+executeCommand _ _ = outputStrLn "Not implemented yet."
 
-displayQuotes :: Config -> [SerializedType] -> IO ()
+displayQuotes :: Config -> [SerializedType] -> InputT IO ()
 displayQuotes conf st 
     = case parser of
-            Left err -> do putStrLn "Configuration file faulty."
-                           putStrLn (show err)
-                           putStrLn "Template cannot be parsed."
-                           putStrLn "Falling back on default config."
+            Left err -> do let msg = ["Configuration file faulty."
+                                     ,(show err)
+                                     ,"Template cannot be parsed."
+                                     ,"Falling back on default config."]
+                           mapM_ outputStrLn msg
                            displayQuotes buildDefaultConfig st
             Right x -> mapM_ (displayQuote x) st
     where
         parser = parseTemplate (currentTemplate conf)
-        displayQuote template (SQuote q) = putStrLn $ readTree template q
+        displayQuote template (SQuote q) = outputStrLn $ readTree template q
         displayQuotes _ _ = error "Not a quote. This should not happen !"
 
 insertAndDisplay :: Config -> ParsedType -> IO ()
