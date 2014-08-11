@@ -95,7 +95,7 @@ unsqlizeST DBQuote ((Grouped metadatas):(Grouped tags):(Grouped authors):pk:loc:
             (SQuote quote')
         where authors' = map groupToAuthor authors
               source' = Source (fromSql' title) [] Map.empty -- TODO : handle metadatas
-              toTagList = map fromSql' tags
+              toTagList = map fromSql' . filter (/= Single SqlNull) $ tags
               quote' = Quote authors' source' (fromSql' cont) (sqlOutputToMaybeString loc) (toTagList) (sqlOutputToMaybeString comm)
 unsqlizeST DBMetadataInfo (key:s:[]) = 
     DBValue (fromSql' key) (SMetadataInfo $ MetadataInfo $ sqlValuesToQuoterString s)
