@@ -1,5 +1,6 @@
 module FQuoter.Serialize.Serialize where
 
+import Data.List
 import Data.List.Split
 
 import Control.Monad
@@ -118,6 +119,7 @@ lookUp :: (IConnection c) => c
                                                 -> SearchTerm 
                                                 -> IO [[SqlValue]]
 lookUp conn t term@(ByAssociation typ id) = quickQuery' conn (getSearch t term) ([toSql id])
+lookUp conn t term@(ByIn xs) = quickQuery' conn (getSearch t term) ([toSql . concat . intersperse "," $ xs])
 lookUp conn t st = quickQuery' conn sQuery (searchArray sQuery st)
     where sQuery = getSearch t st
 

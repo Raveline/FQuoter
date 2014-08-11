@@ -10,6 +10,17 @@ where
 import FQuoter.Parser.ParserTypes
 import FQuoter.Serialize.SerializedTypes
 
+baseQuoteSearch = "SELECT q.id_quote, q.localization, q.content, q.comment \
+     \  , s.title, mi.name, mv.value, t.name, a.first_name, a.last_name, \
+     \ a.surname FROM Quote q\
+     \ LEFT JOIN Source s ON q.related_source = s.id_source\
+     \ LEFT JOIN Quote_Authors qa ON qa.related_quote = q.id_quote\
+     \ LEFT JOIN MetadataValue mv ON q.related_source = s.id_source\
+     \ LEFT JOIN MetadataInfo mi ON mv.related_metadata = mi.id_metadataInfo \
+     \ LEFT JOIN Author a ON qa.related_author = a.id_author\
+     \ LEFT JOIN Quote_Tags qt ON qt.related_quote = q.id_quote\
+     \ LEFT JOIN Tag t ON t.id_tag = qt.related_tag"
+
 data QueryType
     = QInsert DBType
     | QAssociate DBType DBType 
@@ -53,18 +64,8 @@ queryFor (QSearch DBTag (ByName _))
     = "SELECT * FROM Tag WHERE name like ?"
 queryFor (QSearch DBSource (ByName _) ) 
     = "SELECT * FROM Source WHERE title like ?"
-queryFor (QSearch DBQuote (ByName _) )
-    ="SELECT q.id_quote, q.localization, q.content, q.comment, s.title, \
-     \ mi.name, mv.value, t.name, a.first_name, a.last_name, \
-     \ a.surname FROM Quote q\
-     \ LEFT JOIN Source s ON q.related_source = s.id_source\
-     \ LEFT JOIN Quote_Authors qa ON qa.related_quote = q.id_quote\
-     \ LEFT JOIN MetadataValue mv ON q.related_source = s.id_source\
-     \ LEFT JOIN MetadataInfo mi ON mv.related_metadata = mi.id_metadataInfo \
-     \ LEFT JOIN Author a ON qa.related_author = a.id_author\
-     \ LEFT JOIN Quote_Tags qt ON qt.related_quote = q.id_quote\
-     \ LEFT JOIN Tag t ON t.id_tag = qt.related_tag\
-     \ WHERE q.content like ?"
+queryFor (QSearch DBQuote (ByName _) ) = baseQuoteSearch ++ " WHERE q.content like ?"
+queryFor (QSearch DBQuote (ByIn _)) = baseQuoteSearch ++ " WHERE t.name IN (?)"
 queryFor (QSearch DBAuthor (ByAssociation (DBSource, DBAuthor) _)) =
     "SELECT a.* FROM Source_Authors sa LEFT JOIN Author a\
     \ ON sa.related_author = a.id_author WHERE sa.related_source = ?"

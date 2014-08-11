@@ -20,6 +20,7 @@ data SqlOutput = Single SqlValue
 data SearchTerm 
     = ById Integer
     | ByName String
+    | ByIn [String]
     | ByAssociation PairOfTypes Integer
     deriving (Eq, Show)
 

@@ -96,7 +96,9 @@ searchWord :: (Monad m) => String -> FalliableSerialization r m [SerializedType]
 searchWord w = do v <- (search DBQuote (ByName w))
                   mapM (return . value) v
 
-searchTags = undefined
+searchTags :: (Monad m) => [String] -> FalliableSerialization r m [SerializedType]
+searchTags ws = do v <- search DBQuote (ByIn ws)
+                   mapM (return . value) v
 
 {- Insert metadatas. In the Metadata table, insert the value,
 and the primary key to the related Metadata Type and Source. -}
