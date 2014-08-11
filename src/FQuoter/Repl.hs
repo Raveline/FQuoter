@@ -15,6 +15,7 @@ prompt = "> "
 shellForNotDefined :: NotDefinedType -> InputT IO ParsedType
 shellForNotDefined (NDAuthor) = loopAuthor
 shellForNotDefined (NDSource) = loopSource
+shellForNotDefined (NDQuote) = loopQuote
 
 getInputLine' :: String -> InputT IO String
 getInputLine' s = getInputLine s >>= return . nothingToEmpty
@@ -62,3 +63,12 @@ loopSource = readSource >>= return . PSource
     where readSource = ParserSource <$> ask "Enter the title"
                        <*> loopAsk "Enter the author(s)"
                        <*> loopDict "Enter a metadata type" "Enter a metadata value"
+
+loopQuote :: InputT IO ParsedType
+loopQuote = readQuote >>= return . PQuote
+    where readQuote = ParserQuote <$> ask "Enter the quote"
+                                  <*> ask "Enter the source"
+                                  <*> ask' "Enter localization if any"
+                                  <*> loopAsk "Enter tags. Empty input to stop entering tag."
+                                  <*> loopAsk "Enter author. Empty input to stop entering tag."
+                                  <*> ask' "Enter a comment if you have one"
