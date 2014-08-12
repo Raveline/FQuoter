@@ -46,8 +46,8 @@ insert s@(PSource (ParserSource tit auth meta)) =
     do create s
        idSource <- lastInsert 
        validatedAuthors <- mapM validateAuthor auth
-       mapM (associate (DBSource, DBAuthor) . (,) idSource) validatedAuthors
-       mapM (insertMetadatas idSource) (Map.toList meta)
+       mapM_ (associate (DBSource, DBAuthor) . (,) idSource) validatedAuthors
+       mapM_ (insertMetadatas idSource) (Map.toList meta)
        return ()
 {- Insert an author in the DB. This... takes many steps.
 First we need to find, if it exists, the related source.
@@ -63,10 +63,9 @@ insert q@(PQuote pq@(ParserQuote content source loc tags auths comments)) =
        create insertableQuote
        idQuote <- lastInsert
        authors <- getSourceAuthors auths source
-       mapM (associate (DBQuote, DBAuthor) . ( (,) idQuote)) authors
+       mapM_ (associate (DBQuote, DBAuthor) . (,) idQuote) authors
        tags' <- mapM (readOrInsert DBTag) tags
-       mapM (associate (DBQuote, DBTag) . ( (,) idQuote)) tags'
-       return ()
+       mapM_ (associate (DBQuote, DBTag) . (,) idQuote) tags'
 
 getSourceAuthors :: (Monad m) => [String] -> Integer -> FalliableSerialization r m [Integer]
 getSourceAuthors [] idSource = 
@@ -93,7 +92,7 @@ validateAuthor s = do
 {- Searching throuh word will return a list of quotes,
 boxed in SerializedType. -}
 searchWord :: (Monad m) => String -> FalliableSerialization r m [SerializedType]
-searchWord w = do v <- (search DBQuote (ByName w))
+searchWord w = do v <- search DBQuote (ByName w)
                   mapM (return . value) v
 
 searchTags :: (Monad m) => [String] -> FalliableSerialization r m [SerializedType]
@@ -113,7 +112,7 @@ readOrInsert typ term = do
                         result <- search typ (ByName term)
                         case result of
                             []  -> do
-                                create $ (findConstructor typ) term
+                                create $ findConstructor typ term
                                 lastInsert
                             [dbv] -> return $ primaryKey dbv
                             dbvs -> throwError $ AmbiguousDataError term $ map value dbvs

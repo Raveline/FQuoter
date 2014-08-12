@@ -87,22 +87,22 @@ sqlizeQuoterString s = [SqlNull, toSql s]
 unsqlizeST :: DBType -> [SqlOutput] -> DBValue SerializedType
 unsqlizeST DBAuthor (pkey:fName:lName:sName:[]) = 
     DBValue (fromSql' pkey) (SAuthor $ sqlOutputsToAuthor fName lName sName)
-unsqlizeST DBAuthor _ = error $ "SQL error, result array not fitting for author."
+unsqlizeST DBAuthor _ = error "SQL error, result array not fitting for author."
 unsqlizeST DBSource (pkey:title:[]) = 
     DBValue (fromSql' pkey) (SSource $ sqlValuesToSource title)
-unsqlizeST DBSource _ = error $ "SQL error, result array not fitting for source."
+unsqlizeST DBSource _ = error "SQL error, result array not fitting for source."
 unsqlizeST DBQuote ((Grouped metadatas):(Grouped tags):(Grouped authors):pk:loc:cont:comm:title:[]) = 
     DBValue (fromSql' pk)
             (SQuote quote')
         where authors' = map groupToAuthor authors
               source' = Source (fromSql' title) [] Map.empty -- TODO : handle metadatas
               toTagList = map fromSql' . filter (/= Single SqlNull) $ tags
-              quote' = Quote authors' source' (fromSql' cont) (sqlOutputToMaybeString loc) (toTagList) (sqlOutputToMaybeString comm)
+              quote' = Quote authors' source' (fromSql' cont) (sqlOutputToMaybeString loc) toTagList (sqlOutputToMaybeString comm)
 unsqlizeST DBMetadataInfo (key:s:[]) = 
     DBValue (fromSql' key) (SMetadataInfo $ MetadataInfo $ sqlValuesToQuoterString s)
 unsqlizeST DBMetadataValue (key:s:[]) =
     DBValue (fromSql' key) (SMetadataValue $ MetadataValue $ sqlValuesToQuoterString s)
-unsqlizeST t xs = error $ "Couldn't handle " ++ (show t) ++ " with values : " ++ (show xs)
+unsqlizeST t xs = error $ "Couldn't handle " ++ show t ++ " with values : " ++ show xs
 
 groupToAuthor :: SqlOutput -> Author
 groupToAuthor (Grouped (fn:ls:nn:[])) = sqlOutputsToAuthor fn ls nn
