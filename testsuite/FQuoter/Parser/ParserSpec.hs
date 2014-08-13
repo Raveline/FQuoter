@@ -7,6 +7,7 @@ import FQuoter.Quote
 import FQuoter.Parser.Parser
 import FQuoter.Parser.ParserTypes
 import FQuoter.Parser.ParsingErrors
+import FQuoter.Serialize.SerializedTypes
 
 
 main :: IO()
@@ -72,6 +73,9 @@ correcttestcase1 = insertQ' $ ParserQuote testcase1_quote "anxiety" (Just "page 
 findTime = FindWord "time"
 findClassicIncipit = FindTags ["Classic", "Incipit"]
 
+{- Removing values -}
+removeMusic = Remove DBQuote "music"
+
 spec = do
     describe "Check author insertion commands." $ do
         it "Parse a simple author insertion" $ do
@@ -109,6 +113,9 @@ spec = do
             parseInput' "search time" `shouldBe` findTime
         it ("Parse a search by tags command.") $ do
             parseInput' "search [Classic, Incipit]" `shouldBe` findClassicIncipit
+    describe "Check remove commands" $ do
+        it ("Parse a remove command normally.") $ do
+            parseInput' "delete quote music" `shouldBe` removeMusic
     describe "Errors should get proper messages." $ do
         context "If information is missing..." $ do
             it "Explain expected input with no commands." $ do

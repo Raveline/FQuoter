@@ -2,6 +2,7 @@ module FQuoter.Serialize.Queries
 (
     getInsert,
     getSearch,
+    getDelete,
     getAssociate,
     getAssociate2
 )
@@ -26,7 +27,7 @@ data QueryType
     | QAssociate DBType DBType 
     | QSearch DBType SearchTerm
     | QUpdate DBType
-    | QDelete DBType SearchTerm
+    | QDelete DBType 
     deriving (Show)
 
 getAssociate2 t = queryFor $ QInsert t
@@ -37,6 +38,8 @@ getInsert (PMetadataInfo _) = queryFor (QInsert DBMetadataInfo)
 getInsert (PLinkedQuote _) = queryFor (QInsert DBQuote)
 getInsert (PTag _) = queryFor (QInsert DBTag)
 getInsert (PMetadataValue _) = queryFor (QInsert DBMetadataValue)
+
+getDelete t = queryFor (QDelete t)
 
 getSearch :: DBType -> SearchTerm -> Query
 getSearch dbt st = queryFor $ QSearch dbt st
@@ -70,7 +73,9 @@ queryFor (QSearch DBAuthor (ByAssociation (DBSource, DBAuthor) _)) =
     "SELECT a.* FROM Source_Authors sa LEFT JOIN Author a\
     \ ON sa.related_author = a.id_author WHERE sa.related_source = ?"
 queryFor (QUpdate DBAuthor) = "UPDATE author SET first_name = ?, last_name = ?, surname = ? WHERE id_author = ?"
-queryFor (QDelete DBAuthor (ById _)) = "DELETE FROM Author id_author = ?"
 queryFor (QAssociate DBSource DBAuthor) = "INSERT INTO Source_Authors VALUES (?,?,?)"
 queryFor (QAssociate DBQuote DBAuthor) = "INSERT INTO Quote_Authors VALUES (?,?,?)"
 queryFor (QAssociate DBQuote DBTag) = "INSERT INTO Quote_Tags VALUES (?,?,?)"
+queryFor (QDelete DBQuote) = "DELETE FROM Quote WHERE id_quote = ?"
+queryFor (QDelete DBAuthor) = "DELETE FROM Author WHERE id_author = ?"
+queryFor (QDelete DBSource) = "DELETE FROM Source WHERE id_source = ?"

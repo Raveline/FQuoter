@@ -1,5 +1,5 @@
 
-import Data.List hiding (insert)
+import Data.List hiding (insert, delete)
 import Data.Maybe
 import System.Environment
 import System.Console.Haskeline
@@ -28,12 +28,33 @@ interpreter = do args <- liftIO getArgs
                     Left s -> outputStrLn $ show s
                     Right c -> executeCommand config c
 
+-- TODO: refactor so that call to process and mt stack is in a single function
 executeCommand :: Config -> Action -> InputT IO ()
 executeCommand c (Insert (Right x)) = liftIO $ insertAndDisplay c x
 executeCommand c (Insert (Left nd)) = shellForNotDefined nd >>= executeCommand c . Insert . Right
 executeCommand c (FindWord w) = executeSearch c (searchWord w)
 executeCommand c (FindTags ts) = executeSearch c (searchTags ts)
+executeCommand c (Remove t n) = deleteAndConfirm c t n
 executeCommand _ _ = outputStrLn "Not implemented yet."
+
+deleteAndConfirm :: Config -> DBType -> String -> InputT IO ()
+deleteAndConfirm c t n = do db <- liftIO $ accessDB c
+                            result <- liftIO $ runExceptT $ runReaderT (process (remove t n)) db
+                            case result of
+                                Left err -> do let msg = ["Could not delete."
+                                                         ,show err]
+                                               mapM_ outputStrLn msg
+                                Right res -> do let msg = ["Are you sure you want to delete (y/N) :"
+                                                          ,show res]
+                                                mapM_ outputStrLn msg
+                                                conf <- confirmed
+                                                if conf
+                                                    then runReaderT (process commitAction) db
+                                                    else runReaderT (process rollbackAction) db
+
+confirmed = do c <- getInputChar ""
+               let c' = fromMaybe 'n' c
+               return (c' == 'y')
 
 executeSearch c f = do db <- liftIO $ accessDB c
                        result <- liftIO $ runExceptT $ runReaderT (process f) db

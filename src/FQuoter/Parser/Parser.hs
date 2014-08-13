@@ -12,6 +12,7 @@ import Control.Applicative hiding (many, (<|>))
 import FQuoter.Quote hiding (string, Quote(..), content)
 import FQuoter.Parser.ParserTypes
 import FQuoter.Parser.ParsingErrors
+import FQuoter.Serialize.SerializedTypes
 
 import qualified Data.Map as Map
 
@@ -24,6 +25,7 @@ data Action
     = Insert (Either NotDefinedType ParsedType)
     | FindWord String
     | FindTags [String]
+    | Remove DBType String
     deriving (Eq, Show)
 
 parseInput :: String -> Either ParseError Action
@@ -33,6 +35,7 @@ parseInput = parse command "(unknown)"
 -- command :: GenParser Char st Action
 command = choice [ insert
                  , find
+                 , delete
                  -- and others
                  ] <?> errorNoParsing
 
@@ -91,8 +94,6 @@ find = (specifically "find" <|> specifically "search")
        >> choice [FindTags <$> betweenBrackets
                  ,FindWord <$> simpleString
                  ,fail errorSearchNoParam]
-
-delete = undefined
 
 -----------------
 -- Author parsing
@@ -159,3 +160,14 @@ pLocation = Just <$> (specifically "at" *> simpleString)
 pTags = between (string "((" <* spaces) (string "))" <* spaces) (simpleString `sepBy` (char ','))
 
 pComment = Just <$> between (string "[[" <* spaces) (string "]]" <* spaces) (many $ noneOf "]")
+
+------------
+-- Deletion
+------------
+
+delete = specifically "delete"  *> (Remove <$> pickDeleteType <*> (spaces *> many alphaNum))
+    where 
+        pickDeleteType :: GenParser Char st DBType
+        pickDeleteType = choice [string "author" *> return DBAuthor
+                                ,string "source" *> return DBSource
+                                ,string "quote" *> return DBQuote]

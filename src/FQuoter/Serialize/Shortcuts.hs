@@ -5,6 +5,7 @@ module FQuoter.Serialize.Shortcuts
     insert,
     searchWord,
     searchTags,
+    remove,
     FalliableSerialization
 )
 where
@@ -67,19 +68,28 @@ insert q@(PQuote pq@(ParserQuote content source loc tags auths comments)) =
        tags' <- mapM (readOrInsert DBTag) tags
        mapM_ (associate (DBQuote, DBTag) . (,) idQuote) tags'
 
+{- Get the authors of a given source. This function is mainly used
+associate authors to a quote when no specific author was given. -}
 getSourceAuthors :: (Monad m) => [String] -> Integer -> FalliableSerialization r m [Integer]
 getSourceAuthors [] idSource = 
     search DBAuthor (ByAssociation (DBSource, DBAuthor) idSource)
     >>= mapM (return . primaryKey) 
 getSourceAuthors xs _        = mapM validateAuthor xs
 
+{- Search the database with a ByName query and return only one result.
+Fail with error if several results were returned. -}
+searchOne :: (Monad m) => DBType -> String -> FalliableSerialization r m (DBValue SerializedType)
+searchOne typ s = do result <- search typ (ByName s)
+                     case result of
+                         [] -> throwError $ NonExistingDataError s
+                         [dbv] -> return dbv
+                         res -> throwError $ AmbiguousDataError s $ map value res
+
+getFullObject :: (Monad m) => DBType -> String -> FalliableSerialization r m SerializedType
+getFullObject typ s = searchOne typ s >>= return . value
+
 getPrimaryKey :: (Monad m) => DBType -> String -> FalliableSerialization r m Integer
-getPrimaryKey typ s 
-    = do result <- search typ (ByName s)
-         case result of
-            [] -> throwError $ NonExistingDataError s
-            [dbv] -> return $ primaryKey dbv
-            res -> throwError $ AmbiguousDataError s $ map value res
+getPrimaryKey typ s = searchOne typ s >>= return . primaryKey
        
 validateAuthor :: (Monad m) => String -> FalliableSerialization r m Integer
 validateAuthor s = do
@@ -119,3 +129,8 @@ readOrInsert typ term = do
     where
         findConstructor DBMetadataInfo = PMetadataInfo
         findConstructor DBTag = PTag
+
+remove :: (Monad m) => DBType -> String -> FalliableSerialization r m SerializedType
+remove typ s = do res <- searchOne typ s
+                  delete typ $ primaryKey res
+                  return $ value res
