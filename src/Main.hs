@@ -37,10 +37,13 @@ executeCommand c (FindTags ts) = executeSearch c (searchTags ts)
 executeCommand c (Remove t n) = deleteAndConfirm c t n
 executeCommand _ _ = outputStrLn "Not implemented yet."
 
+execute c f = do db <- accessDB c
+                 res <- runExceptT $ runReaderT (process f) db
+                 return (res, db)
+
 deleteAndConfirm :: Config -> DBType -> String -> InputT IO ()
-deleteAndConfirm c t n = do db <- liftIO $ accessDB c
-                            result <- liftIO $ runExceptT $ runReaderT (process (remove t n)) db
-                            case result of
+deleteAndConfirm c t n = do result <- liftIO $ execute c (remove t n)
+                            case fst result of
                                 Left err -> do let msg = ["Could not delete."
                                                          ,show err]
                                                mapM_ outputStrLn msg
@@ -49,16 +52,15 @@ deleteAndConfirm c t n = do db <- liftIO $ accessDB c
                                                 mapM_ outputStrLn msg
                                                 conf <- confirmed
                                                 if conf
-                                                    then runReaderT (process commitAction) db
-                                                    else runReaderT (process rollbackAction) db
+                                                    then runReaderT (process commitAction) (snd result)
+                                                    else runReaderT (process rollbackAction) (snd result)
 
 confirmed = do c <- getInputChar ""
                let c' = fromMaybe 'n' c
                return (c' == 'y')
 
-executeSearch c f = do db <- liftIO $ accessDB c
-                       result <- liftIO $ runExceptT $ runReaderT (process f) db
-                       case result of
+executeSearch c f = do result <- liftIO $ execute c f
+                       case fst result of
                             Left _ -> error "Should not happen. I think ?"
                             Right qs -> displayQuotes c qs
 
@@ -90,12 +92,13 @@ displayQuote template (SQuote q) = mapM_ outputStrLn $ catMaybes displayed
         outputTagsArray xs = Just $ "Tags : " ++ intercalate "," xs
 
 insertAndDisplay :: Config -> ParsedType -> IO ()
-insertAndDisplay c a = do db <- accessDB c
-                          result <- runExceptT $ runReaderT (process (insert a)) db
-                          case result of
-                                Right _ -> do runReaderT (process commitAction) db
-                                              putStrLn $ "Inserted " ++ show a
-                                Left e -> print e >> runReaderT (process rollbackAction) db
+insertAndDisplay c a 
+    = do result <- liftIO $ execute c (insert a)
+         case fst result of
+             Right _ -> do runReaderT (process commitAction) (snd result)
+                           putStrLn $ "Inserted " ++ show a
+             Left e -> print e 
+                       >> runReaderT (process rollbackAction) (snd result)
 
 
 handleError :: DBError -> IO ()
