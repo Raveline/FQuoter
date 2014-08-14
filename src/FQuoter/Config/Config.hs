@@ -22,29 +22,27 @@ data Config = Config { currentDB :: FilePath
 accessDB :: Config -> IO Connection
 accessDB config = do
                     dbFolderPath <- getUserDataDir configFolder
-                    let dbPath =  concat [dbFolderPath, "/", (currentDB config)]
+                    let dbPath =  concat [dbFolderPath, "/", currentDB config]
                     dbExists <- doesFileExist dbPath
-                    case dbExists of
-                        True -> connectSqlite3 dbPath
-                        False -> buildNewDB "schema.sql" dbPath >> connectSqlite3 dbPath
+                    if dbExists then connectSqlite3 dbPath
+                                else buildNewDB "schema.sql" dbPath 
+                                     >> connectSqlite3 dbPath
 
 readConfig :: IO Config
 readConfig = do path <- getUserDataDir configFolder
                 createDirectoryIfMissing True path
-                let pathConfig = (path ++ "/fquoter.cfg")
+                let pathConfig = path ++ "/fquoter.cfg"
                 fileExist <- doesFileExist pathConfig
-                case fileExist of
-                    True -> readConfig' pathConfig
-                    False -> do
-                        writeConfig buildDefaultConfig pathConfig
-                        readConfig' pathConfig
+                if fileExist then readConfig' pathConfig
+                             else do writeConfig buildDefaultConfig pathConfig
+                                     readConfig' pathConfig
 
 writeConfig :: Config -> FilePath -> IO ()
 writeConfig conf path = writeFile path content
     where
         content = unlines [current, template]
-        current = "currentDB:" ++ (currentDB conf)
-        template = "currentDisplay:" ++ (currentTemplate conf)
+        current = "currentDB:" ++ currentDB conf
+        template = "currentDisplay:" ++ currentTemplate conf
 
 buildDefaultConfig :: Config
 buildDefaultConfig = Config defaultCurrent defaultTemplate

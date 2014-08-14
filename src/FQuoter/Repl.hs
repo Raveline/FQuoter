@@ -18,7 +18,7 @@ shellForNotDefined (NDSource) = loopSource
 shellForNotDefined (NDQuote) = loopQuote
 
 getInputLine' :: String -> InputT IO String
-getInputLine' s = getInputLine s >>= return . nothingToEmpty
+getInputLine' s = liftM nothingToEmpty (getInputLine s) 
 
 nothingToEmpty Nothing   = ""
 nothingToEmpty (Just s)  = s
@@ -32,17 +32,17 @@ ask :: String -> InputT IO String
 ask q = outputStrLn q >> getInputLine' prompt
 
 ask' :: String -> InputT IO (Maybe String)
-ask' q = outputStrLn q >> getInputLine prompt >>= return . emptyToNothing
+ask' q = liftM emptyToNothing (outputStrLn q >> getInputLine prompt)
 
 loopAsk :: String -> InputT IO [String]
 loopAsk q = do outputStrLn q
                i <- getInputLine' prompt
                if null i
                     then return []
-                    else (i :) <$> (loopAsk q)
+                    else (i :) <$> loopAsk q
 
 loopDict :: String -> String -> InputT IO (Map.Map String String)
-loopDict q1 q2 = loopDict' >>= return . Map.fromList 
+loopDict q1 q2 = liftM Map.fromList loopDict' 
     where
         loopDict' = do outputStrLn q1
                        k <- getInputLine' prompt
@@ -50,22 +50,22 @@ loopDict q1 q2 = loopDict' >>= return . Map.fromList
                         then return []
                         else do outputStrLn q2
                                 v <- getInputLine' prompt 
-                                ( (k,v) :) <$> (loopDict')
+                                ( (k,v) :) <$> loopDict'
 
 loopAuthor :: InputT IO ParsedType
-loopAuthor = readAuthor >>= return . PAuthor
+loopAuthor = liftM PAuthor readAuthor 
     where readAuthor = Author <$> ask' "Enter the first name"
                               <*> ask' "Enter the last name"
                               <*> ask' "Enter the nick name if any"
 
 loopSource :: InputT IO ParsedType
-loopSource = readSource >>= return . PSource
+loopSource = liftM PSource readSource 
     where readSource = ParserSource <$> ask "Enter the title"
                        <*> loopAsk "Enter the author(s)"
                        <*> loopDict "Enter a metadata type" "Enter a metadata value"
 
 loopQuote :: InputT IO ParsedType
-loopQuote = readQuote >>= return . PQuote
+loopQuote = liftM PQuote readQuote 
     where readQuote = ParserQuote <$> ask "Enter the quote"
                                   <*> ask "Enter the source"
                                   <*> ask' "Enter localization if any"

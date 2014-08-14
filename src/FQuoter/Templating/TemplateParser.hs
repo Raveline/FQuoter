@@ -15,10 +15,10 @@ parseToken = parseMany <|> parseOr <|> parseConditional <|> parseOne
 
 parseOr :: GenParser Char st TokenNode
 parseOr = char '|' *> (Or <$> tillPipe <*> tillPipe)
-    where tillPipe = parseToken `manyTill` (char '|')
+    where tillPipe = parseToken `manyTill` char '|'
 
 parseConditional :: GenParser Char st TokenNode
-parseConditional = Condition <$> (char '?' *> parseContent) <*> parseToken `manyTill` (char '?')
+parseConditional = Condition <$> (char '?' *> parseContent) <*> parseToken `manyTill` char '?'
 
 parseOne :: GenParser Char st TokenNode
 parseOne = One <$> parseMods <*> ( (char '%' *> parseContent) <|> parseConstant)
@@ -27,7 +27,7 @@ parseMods :: GenParser Char st [TokenModificator]
 parseMods = option [] bracketContent 
     where 
         bracketContent :: GenParser Char st [TokenModificator]
-        bracketContent = between (char '{') (char '}') (parseMod `sepBy` (char ','))
+        bracketContent = between (char '{') (char '}') (parseMod `sepBy` char ',')
 
 parseMany :: GenParser Char st TokenNode
 parseMany =  SomeAuthors <$> (( Only <$> nat ) <|> return All) 
