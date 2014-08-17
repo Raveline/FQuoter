@@ -95,7 +95,8 @@ unsqlizeST DBQuote ((Grouped metadatas):(Grouped tags):(Grouped authors):pk:loc:
     DBValue (fromSql' pk)
             (SQuote quote')
         where authors' = map groupToAuthor authors
-              source' = Source (fromSql' title) [] Map.empty -- TODO : handle metadatas
+              metadatas' = buildMap metadatas
+              source' = Source (fromSql' title) [] metadatas' 
               toTagList = map fromSql' . filter (/= Single SqlNull) $ tags
               quote' = Quote authors' source' (fromSql' cont) (sqlOutputToMaybeString loc) toTagList (sqlOutputToMaybeString comm)
 unsqlizeST DBMetadataInfo (key:s:[]) = 
@@ -103,6 +104,19 @@ unsqlizeST DBMetadataInfo (key:s:[]) =
 unsqlizeST DBMetadataValue (key:s:[]) =
     DBValue (fromSql' key) (SMetadataValue $ MetadataValue $ sqlValuesToQuoterString s)
 unsqlizeST t xs = error $ "Couldn't handle " ++ show t ++ " with values : " ++ show xs
+
+buildMap :: [SqlOutput] -> MetadataDictionary
+buildMap = Map.fromList . map toMetaPairs . onlyResult . buildMap'
+    where
+        onlyResult :: [(SqlValue, SqlValue)] -> [(SqlValue, SqlValue)]
+        onlyResult = filter (/= (SqlNull, SqlNull))
+        toMetaPairs (a,b) = (MetadataInfo . QuoterString . fromSql $ a
+                            ,MetadataValue . QuoterString . fromSql $ b)
+        buildMap' :: [SqlOutput] -> [(SqlValue, SqlValue)]
+        buildMap' = map fromGroupedToPair 
+        fromGroupedToPair :: SqlOutput -> (SqlValue, SqlValue)
+        fromGroupedToPair (Grouped [Single a, Single b]) = (a,b)
+        fromGroupedToPair _ = error "Error in grouping, cannot build metadata dictionary."
 
 groupToAuthor :: SqlOutput -> Author
 groupToAuthor (Grouped (fn:ls:nn:[])) = sqlOutputsToAuthor fn ls nn
