@@ -1,11 +1,11 @@
-
-import Data.List hiding (insert, delete)
-import Data.Maybe
+import Database.HDBC hiding (execute)
 import System.Environment
 import System.Console.Haskeline
 import Control.Monad.Except
 import Control.Monad.Reader
+import Data.Maybe
 
+import FQuoter.Display
 import FQuoter.Quote
 import FQuoter.Parser.ParserTypes
 import FQuoter.Parser.Parser
@@ -13,10 +13,7 @@ import FQuoter.Serialize.Shortcuts
 import FQuoter.Serialize.SerializedTypes
 import FQuoter.Serialize.Serialize
 import FQuoter.Config.Config
-import FQuoter.Templating.TemplateParser
-import FQuoter.Templating.Display
 import FQuoter.Repl
-
 
 main :: IO ()
 main = runInputT defaultSettings interpreter
@@ -29,7 +26,7 @@ interpreter = do args <- liftIO getArgs
                     Right c -> executeCommand config c
 
 executeCommand :: Config -> Action -> InputT IO ()
-executeCommand c (Insert (Right x)) = liftIO $ insertAndDisplay c x
+executeCommand c (Insert (Right x)) = insertAndDisplay c x
 executeCommand c (Insert (Left nd)) = shellForNotDefined nd >>= executeCommand c . Insert . Right
 executeCommand c (FindWord w) = executeSearch c (searchWord w)
 executeCommand c (FindTags ts) = executeSearch c (searchTags ts)
@@ -51,8 +48,8 @@ deleteAndConfirm c t n = do result <- liftIO $ execute c (remove t n)
                                                 mapM_ outputStrLn msg
                                                 conf <- confirmed
                                                 if conf
-                                                    then runReaderT (process commitAction) (snd result)
-                                                    else runReaderT (process rollbackAction) (snd result)
+                                                    then commitAndSay (snd result) "Deleted."
+                                                    else rollbackAndSay (snd result) "Cancelled."
 
 confirmed = do c <- getInputChar ""
                let c' = fromMaybe 'n' c
@@ -63,46 +60,21 @@ executeSearch c f = do result <- liftIO $ execute c f
                             Left _ -> error "Should not happen. I think ?"
                             Right qs -> displayQuotes c qs
 
-displayQuotes :: Config -> [SerializedType] -> InputT IO ()
-displayQuotes conf st 
-    = case parser of
-            Left err -> do let msg = ["Configuration file faulty."
-                                     ,show err
-                                     ,"Template cannot be parsed."
-                                     ,"Falling back on default config."]
-                           mapM_ outputStrLn msg
-                           displayQuotes buildDefaultConfig st
-            Right x -> mapM_ (displayQuote x) st
-    where
-        parser = parseTemplate (currentTemplate conf)
-
-displayQuote template (SQuote q) = mapM_ outputStrLn $ catMaybes displayed
-    where
-        displayed = [Just line
-                    , Just $ "\"" ++ content q ++ "\""
-                    , Just ""
-                    , Just $ readTree template q
-                    , comment q 
-                    , Just ""
-                    , outputTagsArray $ tags q
-                    , Just line]
-        displayQuotes _ _ = error "Not a quote. This should not happen !"
-        outputTagsArray [] = Nothing
-        outputTagsArray xs = Just $ "Tags : " ++ intercalate "," xs
-
-insertAndDisplay :: Config -> ParsedType -> IO ()
+insertAndDisplay :: Config -> ParsedType -> InputT IO ()
 insertAndDisplay c a 
     = do result <- liftIO $ execute c (insert a)
          case fst result of
-             Right _ -> do runReaderT (process commitAction) (snd result)
-                           putStrLn $ "Inserted " ++ show a
-             Left e -> print e 
-                       >> runReaderT (process rollbackAction) (snd result)
-
+             Right _ -> do commitAndSay (snd result) ("Inserted " ++ show a)
+             Left e -> outputStrLn (show e)
+                       >> rollbackAndSay (snd result) ("Could not insert " ++ show a)
 
 handleError :: DBError -> IO ()
 handleError = print
 
-line = replicate 80 '-' 
-outputMaybe Nothing = return ()
-outputMaybe (Just s) = outputStrLn s
+rollbackAndSay :: (IConnection c) => c -> String -> InputT IO ()
+rollbackAndSay c s = runReaderT (process rollbackAction) c
+                     >> outputStrLn s
+
+commitAndSay :: (IConnection c) => c -> String -> InputT IO ()
+commitAndSay c s = runReaderT (process commitAction) c
+                   >> outputStrLn s
