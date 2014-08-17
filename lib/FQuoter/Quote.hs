@@ -7,13 +7,16 @@ type Tag = String
 newtype QuoterString = QuoterString { string :: String } deriving (Eq, Show, Ord)
 -- The abstract idea of a metadata ("Editor", "Publication date", etc.)
 newtype MetadataInfo = MetadataInfo { metaInfo :: QuoterString } deriving (Eq, Show, Ord)
+metadataInfo :: MetadataInfo -> String
 metadataInfo = string . metaInfo
 -- The concrete value of a metadata ("Everyman's", "1992", etc.)
 newtype MetadataValue = MetadataValue { metaValue :: QuoterString } deriving (Eq, Show, Ord)
+metadataValue :: MetadataValue -> String
 metadataValue = string . metaValue
 
 type MetadataDictionary = Map.Map MetadataInfo MetadataValue
 
+anonymous :: String
 anonymous = "Anonymous"
 
 data Author = Author { firstName :: Maybe String

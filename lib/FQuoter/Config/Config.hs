@@ -5,14 +5,11 @@ module FQuoter.Config.Config
 , readConfig )
 where
 
-import Control.Monad.Trans
-import Control.Applicative
 import FQuoter.Serialize.Serialize
 import Data.List.Split
-import Database.HDBC
 import Database.HDBC.Sqlite3
 import System.Directory
-import System.Environment.XDG.BaseDir (getUserDataDir, getUserDataFile)
+import System.Environment.XDG.BaseDir (getUserDataDir)
 
 configFolder = "fquoter"
 

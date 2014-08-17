@@ -12,15 +12,12 @@ where
 
 import qualified Data.Map as Map
 import Control.Monad.Except
-import Control.Monad.Identity
 import Control.Monad.Trans.Free
 import Control.Monad.Reader
 
 import FQuoter.Serialize.Serialize
 import FQuoter.Serialize.SerializedTypes
 import FQuoter.Parser.ParserTypes
-import FQuoter.Serialize.Queries
-import FQuoter.Quote
 
 data DBError = NonExistingDataError String
              | AmbiguousDataError String [SerializedType]
@@ -43,7 +40,7 @@ Then, try to insert the metada. If the metadata are ambiguous,
 an error is reported and the process is stopped.
 NB: not fully implemented yet.
  -}
-insert s@(PSource (ParserSource tit auth meta)) = 
+insert s@(PSource (ParserSource _ auth meta)) = 
     do create s
        idSource <- lastInsert 
        validatedAuthors <- mapM validateAuthor auth
@@ -58,7 +55,7 @@ one (the source's author or authors). Then, we need to make a
 specific object with the proper id of the source.
 And then, we need to associate authors and tags, through the
 proper tables, to this source. -}
-insert q@(PQuote pq@(ParserQuote content source loc tags auths comments)) =
+insert (PQuote pq@(ParserQuote _ source _ tags auths _)) =
     do source <- getPrimaryKey DBSource source
        let insertableQuote = PLinkedQuote $ LinkedQuote pq source
        create insertableQuote
@@ -67,6 +64,7 @@ insert q@(PQuote pq@(ParserQuote content source loc tags auths comments)) =
        mapM_ (associate (DBQuote, DBAuthor) . (,) idQuote) authors
        tags' <- mapM (readOrInsert DBTag) tags
        mapM_ (associate (DBQuote, DBTag) . (,) idQuote) tags'
+insert _ = error "Only Quote, Source and Authors can be directly inserted."
 
 {- Get the authors of a given source. This function is mainly used
 associate authors to a quote when no specific author was given. -}
@@ -84,9 +82,6 @@ searchOne typ s = do result <- search typ (ByName s)
                          [] -> throwError $ NonExistingDataError s
                          [dbv] -> return dbv
                          res -> throwError $ AmbiguousDataError s $ map value res
-
-getFullObject :: (Monad m) => DBType -> String -> FalliableSerialization r m SerializedType
-getFullObject typ s = searchOne typ s >>= return . value
 
 getPrimaryKey :: (Monad m) => DBType -> String -> FalliableSerialization r m Integer
 getPrimaryKey typ s = searchOne typ s >>= return . primaryKey
@@ -129,6 +124,7 @@ readOrInsert typ term = do
     where
         findConstructor DBMetadataInfo = PMetadataInfo
         findConstructor DBTag = PTag
+        findConstructor _ = error "Only used for MetadataInfo and Tag."
 
 remove :: (Monad m) => DBType -> String -> FalliableSerialization r m SerializedType
 remove typ s = do res <- searchOne typ s

@@ -33,6 +33,7 @@ parseInput = parse command "(unknown)"
 
 {- A command contains a term (Insert, Search, Delete) and parameters. -}
 -- command :: GenParser Char st Action
+command :: GenParser Char st Action
 command = choice [ insert
                  , find
                  , delete
@@ -49,11 +50,15 @@ many1Till p end = do
     rest <- manyTill p end
     return (first:rest)
 
+authorsList :: GenParser Char st [String]
 authorsList = (specifically "by" *> (betweenQuotes <|> simpleString) `sepBy` (char ',' <* spaces))
+
 {- Get a simple word made of letters and/or numbers -}
+word :: GenParser Char st String
 word = many1 (alphaNum <|> char '\'') <* spaces
 
 {- Read words till a special character or a word chaine is found -}
+words' :: GenParser Char st [String]
 words' = spaces >> word `many1Till` endWordChain
     where
         endWordChain = void (lookAhead symbols)
@@ -66,15 +71,19 @@ words' = spaces >> word `many1Till` endWordChain
         symbols = oneOf "(){}[]\":,"
 
 {- Return a list of words as a single string. -}
+simpleString :: GenParser Char st String
 simpleString = unwords <$> words'
 
 {- Read a string between double quotes -}
+betweenQuotes :: GenParser Char st String
 betweenQuotes = between (char '"') (char '"') (many $ noneOf "\"") 
 
 {- Read words between brackets. -}
+betweenBrackets :: GenParser Char st [String]
 betweenBrackets = between (char '[') (char ']') (simpleString `sepBy` (char ',' <* spaces))
 
 {- Parse a defined word and the spaces after it -}
+specifically :: String -> GenParser Char st String
 specifically s = string s <* spaces
 
 {- Parse key values separated by columns and commas. -}

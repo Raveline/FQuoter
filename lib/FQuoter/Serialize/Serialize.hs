@@ -7,11 +7,9 @@ import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Trans.Free
 import Control.Monad.Reader
-import Data.Maybe
 import Database.HDBC
 import Database.HDBC.Sqlite3
 
-import FQuoter.Quote
 import FQuoter.Parser.ParserTypes
 import FQuoter.Serialize.SerializedTypes
 import FQuoter.Serialize.Grouping
@@ -40,6 +38,7 @@ instance Functor SerializationF where
     fmap f (CommitAction n) = CommitAction (f n)
     fmap f (RollbackAction n) = RollbackAction (f n)
     fmap f (Delete t pk n) = Delete t pk (f n)
+    fmap f (Update pk st n) = Update pk st (f n)
 
 type Serialization = FreeF SerializationF
 type SerializationT = FreeT SerializationF
@@ -102,6 +101,8 @@ process' (Free (RollbackAction n)) = do c <- ask
                                         liftIO $ rollback c 
                                         process n
 
+process' (Free (Update _ _ _)) = undefined
+
 {- Insertion -}
 (<~) :: (IConnection c) => c -> ParsedType -> IO ()
 conn <~ s = void (run conn (getInsert s) (sqlize s) )
@@ -121,7 +122,7 @@ conn <~> (ts, ks) = void(run conn query (SqlNull:sqlizePair ks))
 {- Associate data in a triple relationship -}
 (<~~) :: (IConnection c) => c -> (PairOfKeys, ParsedType) -> IO  ()
 conn <~~ (p,  t@(PMetadataValue s)) = void(run conn (getInsert t) (SqlNull:toSql s:sqlizePair p))
-conn <~~ (p, _) = error "Unsupported type for Association2."
+_ <~~ (_, _) = error "Unsupported type for Association2."
 
 sqlizePair :: PairOfKeys -> [SqlValue]
 sqlizePair (k1,k2) = [toSql k1, toSql k2]
@@ -131,7 +132,7 @@ lookUp :: (IConnection c) => c
                                                 -> DBType 
                                                 -> SearchTerm 
                                                 -> IO [[SqlValue]]
-lookUp conn t term@(ByAssociation typ id) = quickQuery' conn (getSearch t term) [toSql id]
+lookUp conn t term@(ByAssociation _ id) = quickQuery' conn (getSearch t term) [toSql id]
 lookUp conn t term@(ByIn xs) = quickQuery' conn (getSearch t term) [toSql . intercalate "," $ xs]
 lookUp conn t st = quickQuery' conn sQuery (searchArray sQuery st)
     where sQuery = getSearch t st
@@ -151,7 +152,9 @@ searchArray :: String -> SearchTerm -> [SqlValue]
 searchArray query (ByName search) = replicate (paramNumber query) $ toSql $ "%" ++ search ++ "%"
     where 
         paramNumber = length . filter ('?' ==)
-searchArray query (ById id) = [toSql id]
+searchArray _ (ById id) = [toSql id]
+-- TODO : this should not be there, do this after current refactoring
+searchArray _ _ = error "ByAssocation and ByIn use their own functions."
 
 -- Convert an author to a list of SqlValue for insertion
 -- Create a new database from a schema.sql file

@@ -5,9 +5,9 @@ where
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Number
 import Control.Applicative hiding ((<|>), many)
-import Control.Monad
 import FQuoter.Templating.TemplateTypes
 
+parseTemplate :: String -> Either ParseError [TokenNode]
 parseTemplate = parse (many parseToken) ""
 
 parseToken :: GenParser Char st TokenNode
@@ -48,6 +48,7 @@ parseMod = choice [string "cap" *> return Capital
                   ,try $ string "init" *> return Initial
                   ,string "it" *> return Italics]
 
+keyChar :: String
 keyChar = "%{}[]|?"
 
 parseConstant :: GenParser Char st TokenContent

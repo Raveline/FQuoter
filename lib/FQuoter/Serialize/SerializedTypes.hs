@@ -1,11 +1,12 @@
+{-# LANGUAGE FlexibleContexts #-}
 module FQuoter.Serialize.SerializedTypes
 where
 
 import FQuoter.Quote
+import Data.Convertible
 import FQuoter.Parser.ParserTypes
 import Database.HDBC
 import qualified Data.Map as Map
-import Data.List.Split
 
 ---- TYPES
 type PrimaryKey = Integer 
@@ -50,54 +51,56 @@ maybeStringToSql (Just s)       = toSql s
 
 sqlOutputToMaybeString :: SqlOutput -> Maybe String
 sqlOutputToMaybeString (Single v) = sqlToMaybeString v
-sqlOutputToMaybeString (Grouped vs) = error "Cannot make a string out of a group"
+sqlOutputToMaybeString (Grouped _) = error "Cannot make a string out of a group"
 
 sqlToMaybeString :: SqlValue -> Maybe String
 sqlToMaybeString s@(SqlByteString _)  = stringToMaybe $ fromSql s 
     where
         stringToMaybe :: String -> Maybe String
         stringToMaybe [] = Nothing
-        stringToMaybe s = Just s
+        stringToMaybe s' = Just s'
 sqlToMaybeString _ = Nothing
 
+fromSql' :: Convertible SqlValue a => SqlOutput -> a
 fromSql' (Single x) = fromSql x
-fromSql' (Grouped xs) = error "Cannot convert group."
+fromSql' (Grouped _) = error "Cannot convert group."
 
 sqlize :: ParsedType -> [SqlValue]
 sqlize (PAuthor (Author fName lName sName)) = [SqlNull
                                               ,maybeStringToSql fName
                                               ,maybeStringToSql lName
                                               ,maybeStringToSql sName]
-sqlize (PSource (ParserSource title _ _)) =  [SqlNull
-                                             ,toSql title]
+sqlize (PSource (ParserSource t _ _)) =  [SqlNull
+                                             ,toSql t]
 sqlize (PMetadataInfo s) = sqlizeQuoterString s
 sqlize (PMetadataValue v) = sqlizeQuoterString v
 sqlize (PQuote _) = 
     error "Wrong call. Link with source first and use PLinkedQuote."
-sqlize (PLinkedQuote (LinkedQuote (ParserQuote txt _ loc _ _ comm) source)) = 
+sqlize (PLinkedQuote (LinkedQuote (ParserQuote txt _ loc _ _ comm) source')) = 
     [SqlNull
-    ,toSql source
+    ,toSql source'
     ,maybeStringToSql loc
     ,toSql txt
     ,maybeStringToSql comm]
 sqlize (PTag tag) = sqlizeQuoterString tag
 
+sqlizeQuoterString :: String -> [SqlValue]
 sqlizeQuoterString s = [SqlNull, toSql s]
 
 unsqlizeST :: DBType -> [SqlOutput] -> DBValue SerializedType
 unsqlizeST DBAuthor (pkey:fName:lName:sName:[]) = 
     DBValue (fromSql' pkey) (SAuthor $ sqlOutputsToAuthor fName lName sName)
 unsqlizeST DBAuthor _ = error "SQL error, result array not fitting for author."
-unsqlizeST DBSource (pkey:title:[]) = 
-    DBValue (fromSql' pkey) (SSource $ sqlValuesToSource title)
+unsqlizeST DBSource (pk:t:[]) = 
+    DBValue (fromSql' pk) (SSource $ sqlValuesToSource t)
 unsqlizeST DBSource _ = error "SQL error, result array not fitting for source."
-unsqlizeST DBQuote ((Grouped metadatas):(Grouped tags):(Grouped authors):pk:loc:cont:comm:title:[]) = 
+unsqlizeST DBQuote [(Grouped meta),(Grouped tags'),(Grouped auths), pk, loc, cont, comm, tit] = 
     DBValue (fromSql' pk)
             (SQuote quote')
-        where authors' = map groupToAuthor authors
-              metadatas' = buildMap metadatas
-              source' = Source (fromSql' title) [] metadatas' 
-              toTagList = map fromSql' . filter (/= Single SqlNull) $ tags
+        where authors' = map groupToAuthor auths
+              metadatas' = buildMap meta
+              source' = Source (fromSql' tit) [] metadatas' 
+              toTagList = map fromSql' . filter (/= Single SqlNull) $ tags'
               quote' = Quote authors' source' (fromSql' cont) (sqlOutputToMaybeString loc) toTagList (sqlOutputToMaybeString comm)
 unsqlizeST DBMetadataInfo (key:s:[]) = 
     DBValue (fromSql' key) (SMetadataInfo $ MetadataInfo $ sqlValuesToQuoterString s)
@@ -131,4 +134,4 @@ sqlValuesToQuoterString :: SqlOutput-> QuoterString
 sqlValuesToQuoterString = QuoterString . fromSql'
 
 sqlValuesToSource :: SqlOutput -> Source
-sqlValuesToSource title = Source (fromSql' title) [] Map.empty
+sqlValuesToSource t = Source (fromSql' t) [] Map.empty

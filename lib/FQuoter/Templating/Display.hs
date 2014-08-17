@@ -6,7 +6,6 @@ import Data.Maybe
 import Control.Applicative
 import Data.Monoid hiding (All)
 import Data.Char
-import qualified Data.Map as Map
 
 import FQuoter.Quote
 import FQuoter.Templating.TemplateTypes
@@ -17,9 +16,9 @@ readTree q s = fromMaybe "" $ mapSeveralNodes evalNode q s
 evalNode :: TokenNode -> Quote -> Maybe String
 evalNode (One mods (SourceInfo SourceTitle)) = applyMods' mods . Just . title . source
 evalNode (One mods (SourceInfo (SourceMetadata t))) = applyMods' mods . lookupMetadata t . source
-evalNode t@(One mods (AuthorInfo _)) = evalAuthor t . mainAuthor
-evalNode s@(SomeAuthors All ts) = mconcat . mapNodesAndItems evalAuthor ts . author
-evalNode s@(SomeAuthors (Only n) ts) = mconcat . take n . mapNodesAndItems evalAuthor ts . author
+evalNode t@(One _ (AuthorInfo _)) = evalAuthor t . mainAuthor
+evalNode (SomeAuthors All ts) = mconcat . mapNodesAndItems evalAuthor ts . author
+evalNode (SomeAuthors (Only n) ts) = mconcat . take n . mapNodesAndItems evalAuthor ts . author
 evalNode (One mods (ConstantString s)) = displayConstantString mods s
 evalNode (Condition con tn) = handleCondition con tn
 evalNode (Or tn tn') = orNode evalNode tn tn'
@@ -29,6 +28,7 @@ handleCondition (SourceInfo (SourceMetadata m)) tn q
     | otherwise = mapSeveralNodes evalNode tn q
 handleCondition (AuthorInfo ai) tn q
     = handleAuthorCondition ai tn $ mainAuthor q  
+handleCondition _ _ _ = error "SourceInfo or ConstantString cannot be conditions."
 
 displayConstantString :: [TokenModificator] -> String -> a -> Maybe String
 displayConstantString mods s _ = applyMods' mods . Just $ s
@@ -38,6 +38,7 @@ evalAuthor (One mods (AuthorInfo ai)) = applyMods' mods . evalAuthorToken ai
 evalAuthor (One mods (ConstantString s)) = displayConstantString mods s
 evalAuthor (Or tn tn') = orNode evalAuthor tn tn'
 evalAuthor (Condition (AuthorInfo ai) tn) = handleAuthorCondition ai tn
+evalAuthor _ = error "One with authorInfo, Or and Conditions only when evaluating this author "
 
 
 handleAuthorCondition ai tn auth

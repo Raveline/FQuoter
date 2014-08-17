@@ -17,8 +17,10 @@ groupSql :: DBType -> [[SqlValue]] -> [[SqlOutput]]
 groupSql DBQuote = map (groupQuotes . transpose) . groupById
 groupSql _ = toSqlOutputs
 
+groupById :: [[SqlValue]] -> [[[SqlValue]]]
 groupById = groupBy ((==) `on` head)
 
+toSqlOutputs :: [[SqlValue]] -> [[SqlOutput]]
 toSqlOutputs = map (map Single)
 
 groupQuotes :: [[SqlValue]] -> [SqlOutput]
