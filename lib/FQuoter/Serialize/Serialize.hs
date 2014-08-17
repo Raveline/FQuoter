@@ -132,8 +132,6 @@ lookUp :: (IConnection c) => c
                                                 -> DBType 
                                                 -> SearchTerm 
                                                 -> IO [[SqlValue]]
-lookUp conn t term@(ByAssociation _ id) = quickQuery' conn (getSearch t term) [toSql id]
-lookUp conn t term@(ByIn xs) = quickQuery' conn (getSearch t term) [toSql . intercalate "," $ xs]
 lookUp conn t st = quickQuery' conn sQuery (searchArray sQuery st)
     where sQuery = getSearch t st
 
@@ -153,8 +151,8 @@ searchArray query (ByName search) = replicate (paramNumber query) $ toSql $ "%" 
     where 
         paramNumber = length . filter ('?' ==)
 searchArray _ (ById id) = [toSql id]
--- TODO : this should not be there, do this after current refactoring
-searchArray _ _ = error "ByAssocation and ByIn use their own functions."
+searchArray _ (ByIn xs) = [toSql . intercalate "," $ xs]
+searchArray _ (ByAssociation _ id) = [toSql id]
 
 -- Convert an author to a list of SqlValue for insertion
 -- Create a new database from a schema.sql file
