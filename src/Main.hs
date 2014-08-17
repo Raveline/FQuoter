@@ -28,7 +28,6 @@ interpreter = do args <- liftIO getArgs
                     Left s -> outputStrLn $ show s
                     Right c -> executeCommand config c
 
--- TODO: refactor so that call to process and mt stack is in a single function
 executeCommand :: Config -> Action -> InputT IO ()
 executeCommand c (Insert (Right x)) = liftIO $ insertAndDisplay c x
 executeCommand c (Insert (Left nd)) = shellForNotDefined nd >>= executeCommand c . Insert . Right
