@@ -10,6 +10,7 @@ import Text.ParserCombinators.Parsec
 import Control.Applicative hiding (many, (<|>))
 
 import FQuoter.Quote hiding (string, Quote(..), content)
+import FQuoter.Actions
 import FQuoter.Parser.ParserTypes
 import FQuoter.Parser.ParsingErrors
 import FQuoter.Serialize.SerializedTypes
@@ -20,13 +21,6 @@ import qualified Data.Map as Map
 -- Exposed
 -----------
 
--- Result of parsing.
-data Action 
-    = Insert (Either NotDefinedType ParsedType)
-    | FindWord String
-    | FindTags [String]
-    | Remove DBType String
-    deriving (Eq, Show)
 
 parseInput :: String -> Either ParseError Action
 parseInput = parse command "(unknown)" 

@@ -32,6 +32,7 @@ library
                        ,FQuoter.Serialize.Queries
                        ,FQuoter.Serialize.Grouping
                        ,FQuoter.Config.Config
+                       ,FQuoter.Actions
                        ,FQuoter.Templating.TemplateTypes
                        ,FQuoter.Templating.Display
                        ,FQuoter.Templating.TemplateParser
