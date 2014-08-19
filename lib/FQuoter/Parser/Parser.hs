@@ -192,11 +192,22 @@ pickUpdate = choice [string "add" *> return Add
                     ,string "remove" *> return Delete]
 
 pickProperty :: GenParser Char st TypeProperty
-pickProperty = choice [authorProperties]
+pickProperty = choice [authorProperties, sourceProperties]
 
-authorProperties = ModifyAuthor <$> ( (string "first name" *> return AuthorFirstName) <*> readOrNothing
-                                      <|> (string "last name" *> return AuthorLastName) <*> readOrNothing
-                                      <|> (string "nickname" *> return AuthorNickName) <*> readOrNothing)
+authorProperties = ModifyAuthor <$> choice 
+                    [(string "first name" *> return AuthorFirstName) <*> readOrNothing
+                    ,(string "last name" *> return AuthorLastName) <*> readOrNothing
+                    ,(string "nickname" *> return AuthorNickName) <*> readOrNothing]
 
 readOrNothing :: GenParser Char st (Maybe String)
 readOrNothing = spaces *> (Just <$> many alphaNum) <|> (return Nothing)
+
+sourceProperties :: GenParser Char st TypeProperty
+sourceProperties = 
+    ModifySource <$> 
+        choice [(string "title" *> return SourceTitle) <*> (spaces *> many alphaNum)
+               ,(string "metadata" *> (SourceMetadata <$> (spaces *> many alphaNum)
+                                   <*> (char ',' *> readOrNothing)))
+               ,(string "author" *> return SourceAuthors)
+                                 <*> (spaces *> many alphaNum <* spaces) `sepBy` (char ',')]
+

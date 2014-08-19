@@ -58,8 +58,8 @@ data AuthorProperty = AuthorFirstName (Maybe String)
                       deriving (Eq, Show)
 
 data SourceProperty = SourceTitle String
-                      | SourceMetadata MetadataInfo (Maybe MetadataValue)
-                      | SourceAuthors [Author]
+                      | SourceMetadata String (Maybe String)
+                      | SourceAuthors [String]
                       deriving (Eq, Show)
 
 data QuoteProperty = QuoteContent String
