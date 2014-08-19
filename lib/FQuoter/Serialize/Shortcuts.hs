@@ -6,6 +6,7 @@ module FQuoter.Serialize.Shortcuts
     searchWord,
     searchTags,
     remove,
+    updateMainProperty,
     FalliableSerialization
 )
 where
@@ -15,6 +16,8 @@ import Control.Monad.Except
 import Control.Monad.Trans.Free
 import Control.Monad.Reader
 
+import FQuoter.Updater
+import FQuoter.Actions
 import FQuoter.Serialize.Serialize
 import FQuoter.Serialize.SerializedTypes
 import FQuoter.Parser.ParserTypes
@@ -130,3 +133,8 @@ remove :: (Monad m) => DBType -> String -> FalliableSerialization r m Serialized
 remove typ s = do res <- searchOne typ s
                   delete typ $ primaryKey res
                   return $ value res
+
+updateMainProperty :: (Monad m) => DBType -> Update -> TypeProperty -> String -> FalliableSerialization r m ()
+updateMainProperty typ u p s = do res <- searchOne typ s
+                                  let updated = applyUpdate (value res) u p
+                                  update (primaryKey res) updated

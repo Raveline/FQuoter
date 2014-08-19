@@ -47,21 +47,25 @@ data LinkedParserQuote = LinkedQuote { prsQuote :: ParserQuote
                                      ,  sourcePk :: Integer }
                                        deriving (Eq, Show)
 
-data TypeProperties = ModifyAuthor AuthorProperties
-                    | ModifySource SourceProperties
-                    | ModifyQuote QuoteProperties
+data TypeProperty = ModifyAuthor AuthorProperty
+                    | ModifySource SourceProperty
+                    | ModifyQuote QuoteProperty
+                    deriving (Eq, Show)
 
-data AuthorProperties = AuthorFirstName (Maybe String)
+data AuthorProperty = AuthorFirstName (Maybe String)
                       | AuthorLastName (Maybe String)
                       | AuthorNickName (Maybe String)
+                      deriving (Eq, Show)
 
-data SourceProperties = SourceTitle String
+data SourceProperty = SourceTitle String
                       | SourceMetadata MetadataInfo (Maybe MetadataValue)
                       | SourceAuthors [Author]
+                      deriving (Eq, Show)
 
-data QuoteProperties = QuoteContent String
+data QuoteProperty = QuoteContent String
                      | QuoteComment (Maybe String)
                      | QuoteLocation (Maybe String)
                      | QuoteTags [String]
                      | QuoteAuthors [String]
-                     | QuoteSource (Maybe String)
+                     | QuoteSource String
+                     deriving (Eq, Show)

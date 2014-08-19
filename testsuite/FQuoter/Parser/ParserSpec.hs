@@ -4,6 +4,7 @@ import Text.ParserCombinators.Parsec.Error
 import qualified Data.Map as Map
 import Test.Hspec
 import FQuoter.Quote
+import FQuoter.Actions
 import FQuoter.Parser.Parser
 import FQuoter.Parser.ParserTypes
 import FQuoter.Parser.ParsingErrors
@@ -76,6 +77,9 @@ findClassicIncipit = FindTags ["Classic", "Incipit"]
 {- Removing values -}
 removeMusic = Remove DBQuote "music"
 
+{- Updating values -}
+updateHenry = Updating DBAuthor "James" Set (ModifyAuthor $ AuthorFirstName (Just "Henry"))
+
 spec = do
     describe "Check author insertion commands." $ do
         it "Parse a simple author insertion" $ do
@@ -116,6 +120,9 @@ spec = do
     describe "Check remove commands" $ do
         it ("Parse a remove command normally.") $ do
             parseInput' "delete quote music" `shouldBe` removeMusic
+    describe "When receiving update..." $ do
+        it ("Parses a simple updating task for author.") $ do
+            parseInput' "update author James set first name Henry" `shouldBe` updateHenry
     describe "Errors should get proper messages." $ do
         context "If information is missing..." $ do
             it "Explain expected input with no commands." $ do

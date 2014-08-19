@@ -24,7 +24,7 @@ data SerializationF next
     | Associate2 PairOfKeys ParsedType next
     | Search DBType SearchTerm ([DBValue SerializedType] -> next)
     | LastInsert (PrimaryKey -> next)
-    | Update PrimaryKey SerializedType next
+    | Update PrimaryKey ParsedType next
     | Delete DBType PrimaryKey next
     | CommitAction next
     | RollbackAction next
@@ -61,8 +61,8 @@ search typ term = liftF $ Search typ term id
 lastInsert :: (Monad m) => SerializationT m PrimaryKey
 lastInsert = liftF $ LastInsert id
 
-update :: (Monad m) => PrimaryKey -> SerializedType -> SerializationT m ()
-update pk st = liftF $ Update pk st ()
+update :: (Monad m) => PrimaryKey -> ParsedType -> SerializationT m ()
+update pk pt = liftF $ Update pk pt ()
 
 commitAction :: (Monad m) => SerializationT m ()
 commitAction = liftF $ CommitAction ()
@@ -101,11 +101,13 @@ process' (Free (RollbackAction n)) = do c <- ask
                                         liftIO $ rollback c 
                                         process n
 
-process' (Free (Update _ _ _)) = undefined
+process' (Free (Update pk o n)) = do c <- ask
+                                     liftIO $ c <~* (o, pk)
+                                     process n
 
 {- Insertion -}
 (<~) :: (IConnection c) => c -> ParsedType -> IO ()
-conn <~ s = void (run conn (getInsert s) (sqlize s) )
+conn <~ s = void (run conn (getInsert s) (SqlNull:(sqlize s)) )
 
 (</~) :: (IConnection c) => c -> (DBType, PrimaryKey) -> IO ()
 conn </~ (t,k) = void $ run conn (getDelete t) [toSql k]
@@ -123,6 +125,12 @@ conn <~> (ts, ks) = void(run conn query (SqlNull:sqlizePair ks))
 (<~~) :: (IConnection c) => c -> (PairOfKeys, ParsedType) -> IO  ()
 conn <~~ (p,  t@(PMetadataValue s)) = void(run conn (getInsert t) (SqlNull:toSql s:sqlizePair p))
 _ <~~ (_, _) = error "Unsupported type for Association2."
+
+{- Update -}
+(<~*) :: (IConnection c) => c -> (ParsedType, PrimaryKey) -> IO ()
+conn <~* (st, pk) = void (run conn query ((sqlize st) ++ [toSql pk]))
+    where
+        query = getUpdate st
 
 sqlizePair :: PairOfKeys -> [SqlValue]
 sqlizePair (k1,k2) = [toSql k1, toSql k2]

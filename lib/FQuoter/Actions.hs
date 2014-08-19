@@ -9,9 +9,10 @@ data Action
     | FindWord String
     | FindTags [String]
     | Remove DBType String
-    | Update String 
+    | Updating DBType String Update TypeProperty
     deriving (Eq, Show)
 
 data Update = Add
              | Set
              | Delete
+             deriving (Eq, Show)

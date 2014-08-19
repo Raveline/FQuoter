@@ -31,6 +31,7 @@ command :: GenParser Char st Action
 command = choice [ insert
                  , find
                  , delete
+                 , update
                  -- and others
                  ] <?> errorNoParsing
 
@@ -168,9 +169,34 @@ pComment = Just <$> between (string "[[" <* spaces) (string "]]" <* spaces) (man
 -- Deletion
 ------------
 
-delete = specifically "delete"  *> (Remove <$> pickDeleteType <*> (spaces *> many alphaNum))
-    where 
-        pickDeleteType :: GenParser Char st DBType
-        pickDeleteType = choice [string "author" *> return DBAuthor
-                                ,string "source" *> return DBSource
-                                ,string "quote" *> return DBQuote]
+delete = specifically "delete"  *> (Remove <$> pickType <*> (spaces *> many alphaNum))
+
+pickType :: GenParser Char st DBType
+pickType = choice [string "author" *> return DBAuthor
+                  ,string "source" *> return DBSource
+                  ,string "quote" *> return DBQuote]
+
+-------------
+-- Updating
+------------
+
+update :: GenParser Char st Action
+update = specifically "update" *> (Updating <$> (spaces *> pickType)
+                                          <*> (spaces *> many alphaNum)
+                                          <*> (spaces *> pickUpdate)
+                                          <*> (spaces *> pickProperty))
+
+pickUpdate :: GenParser Char st Update
+pickUpdate = choice [string "add" *> return Add
+                    ,string "set" *> return Set
+                    ,string "remove" *> return Delete]
+
+pickProperty :: GenParser Char st TypeProperty
+pickProperty = choice [authorProperties]
+
+authorProperties = ModifyAuthor <$> ( (string "first name" *> return AuthorFirstName) <*> readOrNothing
+                                      <|> (string "last name" *> return AuthorLastName) <*> readOrNothing
+                                      <|> (string "nickname" *> return AuthorNickName) <*> readOrNothing)
+
+readOrNothing :: GenParser Char st (Maybe String)
+readOrNothing = spaces *> (Just <$> many alphaNum) <|> (return Nothing)

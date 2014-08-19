@@ -32,6 +32,8 @@ executeCommand c (Insert (Left nd)) = shellForNotDefined nd >>= executeCommand c
 executeCommand c (FindWord w) = executeSearch c (searchWord w)
 executeCommand c (FindTags ts) = executeSearch c (searchTags ts)
 executeCommand c (Remove t n) = deleteAndConfirm c t n
+executeCommand c (Updating DBAuthor s u p) = do res <- liftIO $ execute c $ updateMainProperty DBAuthor u p s
+                                                commitAndSay (snd res) "Updated properly."
 executeCommand _ _ = outputStrLn "Not implemented yet."
 
 execute c f = do db <- accessDB c
@@ -51,6 +53,7 @@ deleteAndConfirm c t n = do result <- liftIO $ execute c (remove t n)
                                                 if conf
                                                     then commitAndSay (snd result) "Deleted."
                                                     else rollbackAndSay (snd result) "Cancelled."
+
 
 confirmed = do c <- getInputChar ""
                let c' = fromMaybe 'n' c

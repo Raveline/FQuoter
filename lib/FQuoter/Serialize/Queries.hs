@@ -3,6 +3,7 @@ module FQuoter.Serialize.Queries
     getInsert,
     getSearch,
     getDelete,
+    getUpdate,
     getAssociate,
     getAssociate2
 )
@@ -52,6 +53,9 @@ getSearch dbt st = queryFor $ QSearch dbt st
 getAssociate :: DBType -> DBType -> Query
 getAssociate t1 t2 = queryFor $ QAssociate t1 t2
 
+getUpdate (PAuthor _) = queryFor (QUpdate DBAuthor)
+getUpdate _ = error "No queries for this type"
+
 queryFor :: QueryType -> Query
 queryFor (QInsert DBAuthor) = "INSERT INTO Author VALUES (?,?,?,?)"
 queryFor (QInsert DBSource) = "INSERT INTO Source VALUES (?, ?)"
@@ -76,11 +80,14 @@ queryFor (QSearch DBQuote (ByIn _)) = baseQuoteSearch ++ " WHERE t.name IN (?)"
 queryFor (QSearch DBAuthor (ByAssociation (DBSource, DBAuthor) _)) =
     "SELECT a.* FROM Source_Authors sa LEFT JOIN Author a\
     \ ON sa.related_author = a.id_author WHERE sa.related_source = ?"
-queryFor (QUpdate DBAuthor) = "UPDATE author SET first_name = ?, last_name = ?, surname = ? WHERE id_author = ?"
 queryFor (QAssociate DBSource DBAuthor) = "INSERT INTO Source_Authors VALUES (?,?,?)"
 queryFor (QAssociate DBQuote DBAuthor) = "INSERT INTO Quote_Authors VALUES (?,?,?)"
 queryFor (QAssociate DBQuote DBTag) = "INSERT INTO Quote_Tags VALUES (?,?,?)"
 queryFor (QDelete DBQuote) = "DELETE FROM Quote WHERE id_quote = ?"
 queryFor (QDelete DBAuthor) = "DELETE FROM Author WHERE id_author = ?"
 queryFor (QDelete DBSource) = "DELETE FROM Source WHERE id_source = ?"
+queryFor (QUpdate DBAuthor) = "UPDATE Author SET first_name = ?, last_name = ?, surname = ? WHERE id_author = ?"
+queryFor (QUpdate DBSource) = "UPDATE Source SET title = ? WHERE id_source = ?"
+queryFor (QUpdate DBQuote) = "UPDATE Quote SET localization = ?, content = ?, comment = ? WHERE id_quote = ?"
+queryFor (QUpdate DBMetadataValue) = "UPDATE MetadataValue SET value = ? WHERE related_metadata = ? AND id_source = ?"
 queryFor q = error $ "No query for : " ++ show q

@@ -66,26 +66,23 @@ fromSql' (Single x) = fromSql x
 fromSql' (Grouped _) = error "Cannot convert group."
 
 sqlize :: ParsedType -> [SqlValue]
-sqlize (PAuthor (Author fName lName sName)) = [SqlNull
-                                              ,maybeStringToSql fName
+sqlize (PAuthor (Author fName lName sName)) = [maybeStringToSql fName
                                               ,maybeStringToSql lName
                                               ,maybeStringToSql sName]
-sqlize (PSource (ParserSource t _ _)) =  [SqlNull
-                                             ,toSql t]
+sqlize (PSource (ParserSource t _ _)) =  [toSql t]
 sqlize (PMetadataInfo s) = sqlizeQuoterString s
 sqlize (PMetadataValue v) = sqlizeQuoterString v
 sqlize (PQuote _) = 
     error "Wrong call. Link with source first and use PLinkedQuote."
 sqlize (PLinkedQuote (LinkedQuote (ParserQuote txt _ loc _ _ comm) source')) = 
-    [SqlNull
-    ,toSql source'
+    [toSql source'
     ,maybeStringToSql loc
     ,toSql txt
     ,maybeStringToSql comm]
 sqlize (PTag tag) = sqlizeQuoterString tag
 
 sqlizeQuoterString :: String -> [SqlValue]
-sqlizeQuoterString s = [SqlNull, toSql s]
+sqlizeQuoterString s = [toSql s]
 
 unsqlizeST :: DBType -> [SqlOutput] -> DBValue SerializedType
 unsqlizeST DBAuthor (pkey:fName:lName:sName:[]) = 

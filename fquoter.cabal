@@ -23,6 +23,7 @@ library
     ghc-options:        -W -Werror
     hs-source-dirs:     lib
     exposed-modules:    FQuoter.Quote
+                       ,FQuoter.Updater
                        ,FQuoter.Serialize.Serialize
                        ,FQuoter.Serialize.SerializedTypes
                        ,FQuoter.Serialize.Shortcuts
