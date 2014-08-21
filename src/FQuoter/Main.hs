@@ -41,6 +41,7 @@ handleUpdate c DBSource s u p@(ModifySource (SourceTitle _))
     = updateAndConfirm c (updateMainProperty DBSource u p s)
 handleUpdate c DBSource s Add p@(ModifySource _)
     = updateAndConfirm c (updateAddAssociation DBSource p s)
+handleUpdate c DBSource s Delete p = updateAndConfirm c (updateRemoveAssociation DBSource p s)
 handleUpdate _ _ _ _ _ = error "Not implemented yet."
 
 updateAndConfirm c f = do res <- liftIO $ execute c f 

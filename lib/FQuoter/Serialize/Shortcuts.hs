@@ -1,14 +1,15 @@
 {-# LANGUAGE FlexibleContexts, MultiParamTypeClasses, UndecidableInstances #-}
 module FQuoter.Serialize.Shortcuts
 (
-    DBError (..),
-    insert,
-    searchWord,
-    searchTags,
-    remove,
-    updateMainProperty,
-    updateAddAssociation,
-    FalliableSerialization
+    DBError (..)
+    ,insert
+    ,searchWord
+    ,searchTags
+    ,remove
+    ,updateMainProperty
+    ,updateAddAssociation
+    ,updateRemoveAssociation
+    ,FalliableSerialization
 )
 where
 
@@ -149,3 +150,14 @@ updateAddAssociation DBSource (ModifySource (SourceMetadata i (Just v))) s
     = do src <- getPrimaryKey DBSource s 
          insertMetadatas src (i,v)
 updateAddAssociation _ _ _ = error "Illegal case."
+
+updateRemoveAssociation :: (Monad m) => DBType -> TypeProperty -> String -> FalliableSerialization r m ()
+updateRemoveAssociation DBSource (ModifySource (SourceAuthors [x])) s
+    = do src <- getPrimaryKey DBSource s
+         auth <- validateAuthor x
+         dissociate (DBSource, DBAuthor) (Right (src, auth))
+updateRemoveAssociation DBSource (ModifySource (SourceMetadata i Nothing)) s
+    = do src <- getPrimaryKey DBSource s
+         metaVal <- getPrimaryKey DBMetadataInfo i
+         dissociate (DBSource, DBMetadataValue) (Right (src, metaVal))
+updateRemoveAssociation _ _ _ = error "Illegal case."

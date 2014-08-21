@@ -1,13 +1,17 @@
 module FQuoter.Serialize.Queries 
 (
-    getInsert,
-    getSearch,
-    getDelete,
-    getUpdate,
-    getAssociate,
-    getAssociate2
+    getInsert
+    ,getSearch
+    ,getDelete
+    ,getUpdate
+    ,getAssociate
+    ,getAssociate2
+    ,getDissociate
+    ,getFullDissociate
 )
 where
+
+import Data.List.Split
 
 import FQuoter.Parser.ParserTypes
 import FQuoter.Serialize.SerializedTypes
@@ -18,7 +22,7 @@ baseQuoteSearch = "SELECT q.id_quote, q.localization, q.content, q.comment \
      \ a.surname FROM Quote q\
      \ LEFT JOIN Source s ON q.related_source = s.id_source\
      \ LEFT JOIN Quote_Authors qa ON qa.related_quote = q.id_quote\
-     \ LEFT JOIN MetadataValue mv ON q.related_source = s.id_source\
+     \ LEFT JOIN MetadataValue mv ON mv.related_source = s.id_source\
      \ LEFT JOIN MetadataInfo mi ON mv.related_metadata = mi.id_metadataInfo \
      \ LEFT JOIN Author a ON qa.related_author = a.id_author\
      \ LEFT JOIN Quote_Tags qt ON qt.related_quote = q.id_quote\
@@ -27,6 +31,7 @@ baseQuoteSearch = "SELECT q.id_quote, q.localization, q.content, q.comment \
 data QueryType
     = QInsert DBType
     | QAssociate DBType DBType 
+    | QDissociate DBType DBType
     | QSearch DBType SearchTerm
     | QUpdate DBType
     | QDelete DBType 
@@ -52,6 +57,12 @@ getSearch dbt st = queryFor $ QSearch dbt st
 
 getAssociate :: DBType -> DBType -> Query
 getAssociate t1 t2 = queryFor $ QAssociate t1 t2
+
+getDissociate :: DBType -> DBType -> Query
+getDissociate t1 t2 = queryFor $ QDissociate t1 t2
+
+getFullDissociate :: DBType -> DBType -> Query
+getFullDissociate t1 = head . splitOn "AND" . getDissociate t1
 
 getUpdate (PAuthor _) = queryFor (QUpdate DBAuthor)
 getUpdate (PSource _) = queryFor (QUpdate DBSource)
@@ -92,4 +103,8 @@ queryFor (QUpdate DBAuthor) = "UPDATE Author SET first_name = ?, last_name = ?, 
 queryFor (QUpdate DBSource) = "UPDATE Source SET title = ? WHERE id_source = ?"
 queryFor (QUpdate DBQuote) = "UPDATE Quote SET localization = ?, content = ?, comment = ? WHERE id_quote = ?"
 queryFor (QUpdate DBMetadataValue) = "UPDATE MetadataValue SET value = ? WHERE related_metadata = ? AND id_source = ?"
+queryFor (QDissociate DBSource DBAuthor) = "DELETE FROM Source_Authors WHERE related_source = ? AND related_author = ?"
+queryFor (QDissociate DBSource DBMetadataValue) = "DELETE FROM MetadataValue WHERE related_source = ? and related_metadata = ?"
+queryFor (QDissociate DBQuote DBAuthor) = "DELETE FROM Quote_Authors WHERE related_quote = ? AND related_author = ?"
+queryFor (QDissociate DBQuote DBTag) = "DELETE FROM Quote_Tags WHERE related_quote = ? AND related_tag = ?"
 queryFor q = error $ "No query for : " ++ show q

@@ -207,7 +207,8 @@ sourceProperties =
     ModifySource <$> 
         choice [(string "title" *> return SourceTitle) <*> (spaces *> many anyChar)
                ,(string "metadata" *> (SourceMetadata <$> (spaces *> many (noneOf ","))
-                                   <*> (char ',' *> readOrNothing)))
+                                   <*> ( Just <$> (char ',' *> spaces *> many anyChar)
+                                        <|> return Nothing )))
                ,(string "author" *> return SourceAuthors)
                                  <*> (spaces *> many alphaNum <* spaces) `sepBy` (char ',')]
 

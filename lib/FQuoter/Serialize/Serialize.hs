@@ -1,6 +1,23 @@
-module FQuoter.Serialize.Serialize where
+module FQuoter.Serialize.Serialize 
+( 
+  SerializationF
+ ,create
+ ,associate
+ ,associate2
+ ,dissociate
+ ,search
+ ,lastInsert
+ ,update
+ ,delete
+ ,commitAction
+ ,rollbackAction
+ ,process
+ ,readSchema
+ ,buildNewDB
+)
+where
 
-import Data.List
+import Data.List hiding (delete)
 import Data.List.Split
 
 import Control.Monad
@@ -22,6 +39,7 @@ data SerializationF next
     = Create ParsedType next
     | Associate PairOfTypes PairOfKeys next
     | Associate2 PairOfKeys ParsedType next
+    | Dissociate PairOfTypes (Either PrimaryKey PairOfKeys) next
     | Search DBType SearchTerm ([DBValue SerializedType] -> next)
     | LastInsert (PrimaryKey -> next)
     | Update PrimaryKey ParsedType next
@@ -39,12 +57,16 @@ instance Functor SerializationF where
     fmap f (RollbackAction n) = RollbackAction (f n)
     fmap f (Delete t pk n) = Delete t pk (f n)
     fmap f (Update pk st n) = Update pk st (f n)
+    fmap f (Dissociate pts pks n) = Dissociate pts pks (f n)
 
 type Serialization = FreeF SerializationF
 type SerializationT = FreeT SerializationF
 
 associate :: (Monad m) => PairOfTypes -> PairOfKeys -> SerializationT m ()
 associate pts pks = liftF $ Associate pts pks ()
+
+dissociate :: (Monad m) => PairOfTypes -> Either PrimaryKey PairOfKeys -> SerializationT m ()
+dissociate pts pks = liftF $ Dissociate pts pks ()
 
 associate2 :: (Monad m) => PairOfKeys -> ParsedType -> SerializationT m ()
 associate2 pks t = liftF $ Associate2 pks t ()
@@ -85,6 +107,9 @@ process' (Free (Search t s n)) = do c <- ask
 process' (Free (Associate pot pok n)) = do c <- ask
                                            liftIO $ c <~> (pot, pok)
                                            process n
+process' (Free (Dissociate pot pok n)) = do c <- ask
+                                            liftIO $ c <~/> (pot, pok)
+                                            process n
 process' (Free (Associate2 pks t n)) = do c <- ask
                                           liftIO $ c <~~ (pks, t)
                                           process n
@@ -119,8 +144,14 @@ conn ~> (t,st) = uncurry (lookUp conn) (t,st)
 {- Associate data in a many-to-many relation -}
 (<~>) :: (IConnection c) => c -> (PairOfTypes, PairOfKeys) -> IO ()
 conn <~> (ts, ks) = void(run conn query (SqlNull:sqlizePair ks))
-        where
-            query = uncurry getAssociate ts
+    where query = uncurry getAssociate ts
+
+(<~/>) :: (IConnection c) => c -> (PairOfTypes, Either PrimaryKey PairOfKeys) -> IO ()
+conn <~/> (ts, (Left pk)) = void(run conn query [toSql pk])
+    where query= uncurry getFullDissociate ts
+conn <~/> (ts, (Right pks)) = void(run conn query $ sqlizePair pks)
+    where query = uncurry getDissociate ts
+
 {- Associate data in a triple relationship -}
 (<~~) :: (IConnection c) => c -> (PairOfKeys, ParsedType) -> IO  ()
 conn <~~ (p,  t@(PMetadataValue s)) = void(run conn (getInsert t) (SqlNull:toSql s:sqlizePair p))
@@ -142,9 +173,6 @@ lookUp :: (IConnection c) => c
                                                 -> IO [[SqlValue]]
 lookUp conn t st = quickQuery' conn sQuery (searchArray sQuery st)
     where sQuery = getSearch t st
-
-runAssociate :: (IConnection c) => c -> Query -> [Integer] -> IO Integer
-runAssociate conn query = run conn query . (:) SqlNull . map toSql
 
 -- Get the id of last insertion
 queryLastInsert :: (IConnection c) => c -> IO Integer
