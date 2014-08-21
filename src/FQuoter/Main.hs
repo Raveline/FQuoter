@@ -36,13 +36,15 @@ executeCommand c (Updating t s u p) = handleUpdate c t s u p
 executeCommand _ _ = outputStrLn "Not implemented yet."
 
 handleUpdate :: Config -> DBType -> String -> Update -> TypeProperty -> InputT IO ()
-handleUpdate c DBAuthor s u p = updateAndConfirm c DBAuthor s u p
-handleUpdate c DBSource s u p@(ModifySource (SourceTitle _)) = updateAndConfirm c DBSource s u p
+handleUpdate c DBAuthor s u p = updateAndConfirm c (updateMainProperty DBAuthor u p s)
+handleUpdate c DBSource s u p@(ModifySource (SourceTitle _)) 
+    = updateAndConfirm c (updateMainProperty DBSource u p s)
+handleUpdate c DBSource s Add p@(ModifySource _)
+    = updateAndConfirm c (updateAddAssociation DBSource p s)
 handleUpdate _ _ _ _ _ = error "Not implemented yet."
 
-updateAndConfirm :: Config -> DBType -> String -> Update -> TypeProperty -> InputT IO ()
-updateAndConfirm c t s u p = do res <- liftIO $ execute c $ updateMainProperty t u p s 
-                                commitAndSay (snd res) "Updated properly."
+updateAndConfirm c f = do res <- liftIO $ execute c f 
+                          commitAndSay (snd res) "Updated properly."
 
 execute c f = do db <- accessDB c
                  res <- runExceptT $ runReaderT (process f) db

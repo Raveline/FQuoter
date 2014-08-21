@@ -7,6 +7,7 @@ module FQuoter.Serialize.Shortcuts
     searchTags,
     remove,
     updateMainProperty,
+    updateAddAssociation,
     FalliableSerialization
 )
 where
@@ -138,3 +139,13 @@ updateMainProperty :: (Monad m) => DBType -> Update -> TypeProperty -> String ->
 updateMainProperty typ u p s = do res <- searchOne typ s
                                   let updated = applyUpdate (value res) u p
                                   update (primaryKey res) updated
+
+updateAddAssociation :: (Monad m) => DBType -> TypeProperty -> String -> FalliableSerialization r m ()
+updateAddAssociation DBSource (ModifySource (SourceAuthors xs)) s 
+    = do src <- getPrimaryKey DBSource s
+         auth <- mapM validateAuthor xs
+         mapM_ (associate (DBSource, DBAuthor) . (,) src) auth
+updateAddAssociation DBSource (ModifySource (SourceMetadata i (Just v))) s
+    = do src <- getPrimaryKey DBSource s 
+         insertMetadatas src (i,v)
+updateAddAssociation _ _ _ = error "Illegal case."
