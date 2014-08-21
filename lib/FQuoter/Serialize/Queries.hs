@@ -54,6 +54,8 @@ getAssociate :: DBType -> DBType -> Query
 getAssociate t1 t2 = queryFor $ QAssociate t1 t2
 
 getUpdate (PAuthor _) = queryFor (QUpdate DBAuthor)
+getUpdate (PSource _) = queryFor (QUpdate DBSource)
+getUpdate (PMetadataInfo _) = queryFor (QUpdate DBMetadataInfo)
 getUpdate _ = error "No queries for this type"
 
 queryFor :: QueryType -> Query

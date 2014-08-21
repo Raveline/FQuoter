@@ -1,6 +1,8 @@
 module FQuoter.Updater
 where
 
+import qualified Data.Map as Map
+
 import FQuoter.Quote
 import FQuoter.Actions
 import FQuoter.Parser.ParserTypes
@@ -8,6 +10,7 @@ import FQuoter.Serialize.SerializedTypes
 
 applyUpdate :: SerializedType -> Update -> TypeProperty -> ParsedType
 applyUpdate (SAuthor a) u (ModifyAuthor p) = modifyAuthor u p a
+applyUpdate (SSource _) u (ModifySource p) = modifySource u p
 applyUpdate _ _ _ = error "Impossible case."
 
 modifyAuthor :: Update -> AuthorProperty -> Author -> ParsedType
@@ -22,9 +25,9 @@ modifyAuthor u p a = PAuthor $ modifyAuthor' u p a
         modifyAuthor' Delete (AuthorNickName _) a = a { surname = Nothing }
         modifyAuthor' _ _ _ = error "Add is invalid for authors."
 
-modifySource :: Update -> SourceProperty -> Source -> Source
-modifySource Set (SourceTitle t) s = s { title = t }
-modifySource _ _ _ = error "Invalid case"
+modifySource :: Update -> SourceProperty -> ParsedType
+modifySource Set (SourceTitle t) = PSource $ ParserSource t [] Map.empty
+modifySource _ _ = error "Invalid case"
 
 modifyQuote :: Update -> QuoteProperty -> Quote -> Quote
 modifyQuote Set (QuoteContent c) q = q { content = c }

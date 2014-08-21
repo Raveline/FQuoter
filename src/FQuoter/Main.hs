@@ -32,9 +32,17 @@ executeCommand c (Insert (Left nd)) = shellForNotDefined nd >>= executeCommand c
 executeCommand c (FindWord w) = executeSearch c (searchWord w)
 executeCommand c (FindTags ts) = executeSearch c (searchTags ts)
 executeCommand c (Remove t n) = deleteAndConfirm c t n
-executeCommand c (Updating DBAuthor s u p) = do res <- liftIO $ execute c $ updateMainProperty DBAuthor u p s
-                                                commitAndSay (snd res) "Updated properly."
+executeCommand c (Updating t s u p) = handleUpdate c t s u p
 executeCommand _ _ = outputStrLn "Not implemented yet."
+
+handleUpdate :: Config -> DBType -> String -> Update -> TypeProperty -> InputT IO ()
+handleUpdate c DBAuthor s u p = updateAndConfirm c DBAuthor s u p
+handleUpdate c DBSource s u p@(ModifySource (SourceTitle _)) = updateAndConfirm c DBSource s u p
+handleUpdate _ _ _ _ _ = error "Not implemented yet."
+
+updateAndConfirm :: Config -> DBType -> String -> Update -> TypeProperty -> InputT IO ()
+updateAndConfirm c t s u p = do res <- liftIO $ execute c $ updateMainProperty t u p s 
+                                commitAndSay (snd res) "Updated properly."
 
 execute c f = do db <- accessDB c
                  res <- runExceptT $ runReaderT (process f) db
