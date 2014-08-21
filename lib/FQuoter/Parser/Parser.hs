@@ -200,13 +200,13 @@ authorProperties = ModifyAuthor <$> choice
                     ,(string "nickname" *> return AuthorNickName) <*> readOrNothing]
 
 readOrNothing :: GenParser Char st (Maybe String)
-readOrNothing = spaces *> (Just <$> many alphaNum) <|> (return Nothing)
+readOrNothing = spaces *> (Just <$> many anyChar) <|> (return Nothing)
 
 sourceProperties :: GenParser Char st TypeProperty
 sourceProperties = 
     ModifySource <$> 
-        choice [(string "title" *> return SourceTitle) <*> (spaces *> many alphaNum)
-               ,(string "metadata" *> (SourceMetadata <$> (spaces *> many alphaNum)
+        choice [(string "title" *> return SourceTitle) <*> (spaces *> many anyChar)
+               ,(string "metadata" *> (SourceMetadata <$> (spaces *> many (noneOf ","))
                                    <*> (char ',' *> readOrNothing)))
                ,(string "author" *> return SourceAuthors)
                                  <*> (spaces *> many alphaNum <* spaces) `sepBy` (char ',')]
