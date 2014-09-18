@@ -85,13 +85,13 @@ sqlizeQuoterString :: String -> [SqlValue]
 sqlizeQuoterString s = [toSql s]
 
 unsqlizeST :: DBType -> [SqlOutput] -> DBValue SerializedType
-unsqlizeST DBAuthor (pkey:fName:lName:sName:[]) = 
+unsqlizeST DBAuthor [pkey,fName,lName,sName] = 
     DBValue (fromSql' pkey) (SAuthor $ sqlOutputsToAuthor fName lName sName)
 unsqlizeST DBAuthor _ = error "SQL error, result array not fitting for author."
-unsqlizeST DBSource (pk:t:[]) = 
+unsqlizeST DBSource [pk,t] = 
     DBValue (fromSql' pk) (SSource $ sqlValuesToSource t)
 unsqlizeST DBSource _ = error "SQL error, result array not fitting for source."
-unsqlizeST DBQuote [(Grouped meta),(Grouped tags'),(Grouped auths), pk, loc, cont, comm, tit] = 
+unsqlizeST DBQuote [Grouped meta,Grouped tags',Grouped auths, pk, loc, cont, comm, tit] = 
     DBValue (fromSql' pk)
             (SQuote quote')
         where authors' = map groupToAuthor auths
@@ -99,9 +99,9 @@ unsqlizeST DBQuote [(Grouped meta),(Grouped tags'),(Grouped auths), pk, loc, con
               source' = Source (fromSql' tit) [] metadatas' 
               toTagList = map fromSql' . filter (/= Single SqlNull) $ tags'
               quote' = Quote authors' source' (fromSql' cont) (sqlOutputToMaybeString loc) toTagList (sqlOutputToMaybeString comm)
-unsqlizeST DBMetadataInfo (key:s:[]) = 
+unsqlizeST DBMetadataInfo [key,s] = 
     DBValue (fromSql' key) (SMetadataInfo $ MetadataInfo $ sqlValuesToQuoterString s)
-unsqlizeST DBMetadataValue (key:s:[]) =
+unsqlizeST DBMetadataValue [key,s] = 
     DBValue (fromSql' key) (SMetadataValue $ MetadataValue $ sqlValuesToQuoterString s)
 unsqlizeST t xs = error $ "Couldn't handle " ++ show t ++ " with values : " ++ show xs
 
@@ -119,7 +119,7 @@ buildMap = Map.fromList . map toMetaPairs . onlyResult . buildMap'
         fromGroupedToPair _ = error "Error in grouping, cannot build metadata dictionary."
 
 groupToAuthor :: SqlOutput -> Author
-groupToAuthor (Grouped (fn:ls:nn:[])) = sqlOutputsToAuthor fn ls nn
+groupToAuthor (Grouped [fn,ls,nn]) = sqlOutputsToAuthor fn ls nn
 groupToAuthor _ = error "Uncorrect grouping for author."
 
 sqlOutputsToAuthor :: SqlOutput -> SqlOutput -> SqlOutput -> Author

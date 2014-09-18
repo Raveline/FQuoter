@@ -132,7 +132,7 @@ process' (Free (Update pk o n)) = do c <- ask
 
 {- Insertion -}
 (<~) :: (IConnection c) => c -> ParsedType -> IO ()
-conn <~ s = void (run conn (getInsert s) (SqlNull:(sqlize s)) )
+conn <~ s = void (run conn (getInsert s) (SqlNull:sqlize s) )
 
 (</~) :: (IConnection c) => c -> (DBType, PrimaryKey) -> IO ()
 conn </~ (t,k) = void $ run conn (getDelete t) [toSql k]
@@ -147,9 +147,9 @@ conn <~> (ts, ks) = void(run conn query (SqlNull:sqlizePair ks))
     where query = uncurry getAssociate ts
 
 (<~/>) :: (IConnection c) => c -> (PairOfTypes, Either PrimaryKey PairOfKeys) -> IO ()
-conn <~/> (ts, (Left pk)) = void(run conn query [toSql pk])
+conn <~/> (ts, Left pk) = void(run conn query [toSql pk])
     where query= uncurry getFullDissociate ts
-conn <~/> (ts, (Right pks)) = void(run conn query $ sqlizePair pks)
+conn <~/> (ts, Right pks) = void(run conn query $ sqlizePair pks)
     where query = uncurry getDissociate ts
 
 {- Associate data in a triple relationship -}
@@ -159,7 +159,7 @@ _ <~~ (_, _) = error "Unsupported type for Association2."
 
 {- Update -}
 (<~*) :: (IConnection c) => c -> (ParsedType, PrimaryKey) -> IO ()
-conn <~* (st, pk) = void (run conn query ((sqlize st) ++ [toSql pk]))
+conn <~* (st, pk) = void (run conn query (sqlize st ++ [toSql pk]))
     where
         query = getUpdate st
 

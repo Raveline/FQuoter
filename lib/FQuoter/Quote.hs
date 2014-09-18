@@ -53,4 +53,4 @@ instance Show Source where
     show (Source t _ _) = t
 
 instance Show Quote where
-    show q = (show $ author q) ++ " - " ++ content q
+    show q = show (author q) ++ " - " ++ content q

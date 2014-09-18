@@ -89,7 +89,7 @@ searchOne typ s = do result <- search typ (ByName s)
                          res -> throwError $ AmbiguousDataError s $ map value res
 
 getPrimaryKey :: (Monad m) => DBType -> String -> FalliableSerialization r m Integer
-getPrimaryKey typ s = searchOne typ s >>= return . primaryKey
+getPrimaryKey typ s = liftM primaryKey $ searchOne typ s
        
 validateAuthor :: (Monad m) => String -> FalliableSerialization r m Integer
 validateAuthor s = do

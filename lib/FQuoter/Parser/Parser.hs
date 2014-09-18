@@ -27,10 +27,10 @@ parseInput = parse command "(unknown)"
 -- command :: GenParser Char st Action
 command :: GenParser Char st Action
 command = choice [ insert
-                 , try $ find
+                 , try find
                  , delete
                  , update
-                 , try $ shell
+                 , try shell
                  -- and others
                  ] <?> errorNoParsing
 
@@ -45,7 +45,7 @@ many1Till p end = do
     return (first:rest)
 
 authorsList :: GenParser Char st [String]
-authorsList = (specifically "by" *> (betweenQuotes <|> simpleString) `sepBy` (char ',' <* spaces))
+authorsList = specifically "by" *> (betweenQuotes <|> simpleString) `sepBy` (char ',' <* spaces)
 
 -- Get a simple word made of letters and/or numbers
 word :: GenParser Char st String
@@ -152,7 +152,7 @@ pQuote = specifically "quote" <* spaces
                             <*> authors 
                             <*> comment))
                 content = betweenQuotes <* spaces
-                source = (specifically "in" *> (simpleString <|> betweenQuotes))
+                source = specifically "in" *> (simpleString <|> betweenQuotes)
                 authors = option [] authorsList
                 tags = option [] (pTags <* spaces)
                 loc = option Nothing (pLocation <* spaces) 
@@ -160,7 +160,7 @@ pQuote = specifically "quote" <* spaces
 
 pLocation = Just <$> (specifically "at" *> simpleString)
 
-pTags = between (string "((" <* spaces) (string "))" <* spaces) (simpleString `sepBy` (char ','))
+pTags = between (string "((" <* spaces) (string "))" <* spaces) (simpleString `sepBy` char ',')
 
 pComment = Just <$> between (string "[[" <* spaces) (string "]]" <* spaces) (many $ noneOf "]")
 
@@ -199,17 +199,19 @@ authorProperties = ModifyAuthor <$> choice
                     ,(string "nickname" *> return AuthorNickName) <*> readOrNothing]
 
 readOrNothing :: GenParser Char st (Maybe String)
-readOrNothing = spaces *> (Just <$> many anyChar) <|> (return Nothing)
+readOrNothing = spaces *> (Just <$> many anyChar) <|> return Nothing
 
 sourceProperties :: GenParser Char st TypeProperty
 sourceProperties = 
     ModifySource <$> 
-        choice [(string "title" *> return SourceTitle) <*> (spaces *> many anyChar)
-               ,(string "metadata" *> (SourceMetadata <$> (spaces *> many (noneOf ","))
-                                   <*> ( Just <$> (char ',' *> spaces *> many anyChar)
-                                        <|> return Nothing )))
+        choice [(string "title" *> return SourceTitle) 
+                    <*> (spaces *> many anyChar)
+               ,string "metadata" *> (SourceMetadata 
+                    <$> (spaces *> many (noneOf ","))
+                    <*> ( Just <$> (char ',' *> spaces *> many anyChar)
+                               <|> return Nothing ))
                ,(string "author" *> return SourceAuthors)
-                                 <*> (spaces *> many alphaNum <* spaces) `sepBy` (char ',')]
+                    <*> (spaces *> many alphaNum <* spaces) `sepBy` char ',']
 
 -----------
 -- Shell

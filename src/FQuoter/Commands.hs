@@ -10,7 +10,6 @@ import Data.Maybe
 import Text.ParserCombinators.Parsec
 
 import FQuoter.Display
-import FQuoter.Quote
 import FQuoter.Actions
 import FQuoter.Parser.Parser
 import FQuoter.Parser.ParserTypes
@@ -33,7 +32,6 @@ executeCommand c (FindTags ts) = executeSearch c (searchTags ts)
 executeCommand c (Remove t n) = deleteAndConfirm c t n
 executeCommand c (Updating t s u p) = handleUpdate c t s u p
 executeCommand c (Shell) = shellMode c
-executeCommand _ _ = outputStrLn "Not implemented yet."
 
 -- Updating something remains the most unelegantly expressed task.
 -- We have to divide between updating main qualities of the object,
@@ -98,12 +96,9 @@ insertAndDisplay :: Config -> ParsedType -> InputT IO ()
 insertAndDisplay c a 
     = do result <- liftIO $ execute c (insert a)
          case fst result of
-             Right _ -> do commitAndSay (snd result) ("Inserted " ++ show a)
+             Right _ -> commitAndSay (snd result) ("Inserted " ++ show a)
              Left e -> outputStrLn (show e)
                        >> rollbackAndSay (snd result) ("Could not insert " ++ show a)
-
-handleError :: DBError -> IO ()
-handleError = print
 
 rollbackAndSay :: (IConnection c) => c -> String -> InputT IO ()
 rollbackAndSay c s = runReaderT (process rollbackAction) c
@@ -114,12 +109,11 @@ commitAndSay c s = runReaderT (process commitAction) c
                    >> outputStrLn s
 
 shellMode :: Config -> InputT IO ()
-shellMode c = getInputLine' prompt
-              >>= return . parseInput 
+shellMode c = liftM parseInput (getInputLine' prompt)
               >>= interpretationResult c
               >> shellMode c
 
 interpretationResult :: Config -> Either ParseError Action -> InputT IO()
 interpretationResult _ (Left s) = outputStrLn $ show s
-interpretationResult c (Right Shell) = outputStrLn $ "Already in shell-mode !"
+interpretationResult _ (Right Shell) = outputStrLn "Already in shell-mode !"
 interpretationResult c (Right r) = executeCommand c r

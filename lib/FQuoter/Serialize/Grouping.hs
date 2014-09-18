@@ -24,7 +24,7 @@ toSqlOutputs :: [[SqlValue]] -> [[SqlOutput]]
 toSqlOutputs = map (map Single)
 
 groupQuotes :: [[SqlValue]] -> [SqlOutput]
-groupQuotes values = (regroup metadata):(regroup tags):(regroup authors):quote'
+groupQuotes values = regroup metadata:regroup tags:regroup authors:quote'
     where
         (quote, others) = splitAt 5 values
         (metadata, others') = splitAt 2 others

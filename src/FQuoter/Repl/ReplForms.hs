@@ -8,8 +8,6 @@ import System.Console.Haskeline
 import qualified Data.Map as Map
 
 import FQuoter.Quote
-import FQuoter.Config.Config
-import FQuoter.Parser.Parser
 import FQuoter.Parser.ParserTypes
 import FQuoter.Repl.ReplUtils
 
