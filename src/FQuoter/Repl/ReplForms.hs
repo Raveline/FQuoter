@@ -1,4 +1,4 @@
-module FQuoter.Repl
+module FQuoter.Repl.ReplForms
 (shellForNotDefined)
 where
 
@@ -8,31 +8,16 @@ import System.Console.Haskeline
 import qualified Data.Map as Map
 
 import FQuoter.Quote
+import FQuoter.Config.Config
+import FQuoter.Parser.Parser
 import FQuoter.Parser.ParserTypes
+import FQuoter.Repl.ReplUtils
 
-prompt = "> "
 
 shellForNotDefined :: NotDefinedType -> InputT IO ParsedType
 shellForNotDefined (NDAuthor) = loopAuthor
 shellForNotDefined (NDSource) = loopSource
 shellForNotDefined (NDQuote) = loopQuote
-
-getInputLine' :: String -> InputT IO String
-getInputLine' s = liftM nothingToEmpty (getInputLine s) 
-
-nothingToEmpty Nothing   = ""
-nothingToEmpty (Just s)  = s
-
-emptyToNothing :: Maybe String -> Maybe String
-emptyToNothing Nothing   = Nothing
-emptyToNothing (Just "") = Nothing
-emptyToNothing (Just s)  = Just s
-
-ask :: String -> InputT IO String
-ask q = outputStrLn q >> getInputLine' prompt
-
-ask' :: String -> InputT IO (Maybe String)
-ask' q = liftM emptyToNothing (outputStrLn q >> getInputLine prompt)
 
 loopAsk :: String -> InputT IO [String]
 loopAsk q = do outputStrLn q

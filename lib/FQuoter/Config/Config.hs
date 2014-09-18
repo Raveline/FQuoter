@@ -54,4 +54,4 @@ readConfig' path = do
                  let fItems = map (splitOn ":") . lines $ f
                  let currentDB = concat . tail . head $ fItems
                  let currentTemplate = concat . tail . last $ fItems
-                 return $ Config currentDB currentTemplate
+                 return $ Config currentDB currentTemplate 

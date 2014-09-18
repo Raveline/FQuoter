@@ -20,8 +20,6 @@ import qualified Data.Map as Map
 -----------
 -- Exposed
 -----------
-
-
 parseInput :: String -> Either ParseError Action
 parseInput = parse command "(unknown)" 
 
@@ -29,9 +27,10 @@ parseInput = parse command "(unknown)"
 -- command :: GenParser Char st Action
 command :: GenParser Char st Action
 command = choice [ insert
-                 , find
+                 , try $ find
                  , delete
                  , update
+                 , try $ shell
                  -- and others
                  ] <?> errorNoParsing
 
@@ -48,11 +47,11 @@ many1Till p end = do
 authorsList :: GenParser Char st [String]
 authorsList = (specifically "by" *> (betweenQuotes <|> simpleString) `sepBy` (char ',' <* spaces))
 
-{- Get a simple word made of letters and/or numbers -}
+-- Get a simple word made of letters and/or numbers
 word :: GenParser Char st String
 word = many1 (alphaNum <|> char '\'') <* spaces
 
-{- Read words till a special character or a word chaine is found -}
+-- Read words till a special character or a word chaine is found
 words' :: GenParser Char st [String]
 words' = spaces >> word `many1Till` endWordChain
     where
@@ -212,3 +211,9 @@ sourceProperties =
                ,(string "author" *> return SourceAuthors)
                                  <*> (spaces *> many alphaNum <* spaces) `sepBy` (char ',')]
 
+-----------
+-- Shell
+-----------
+
+shell :: GenParser Char st Action
+shell = string "shell" *> return Shell

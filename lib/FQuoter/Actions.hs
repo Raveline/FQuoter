@@ -10,6 +10,7 @@ data Action
     | FindTags [String]
     | Remove DBType String
     | Updating DBType String Update TypeProperty
+    | Shell
     deriving (Eq, Show)
 
 data Update = Add
