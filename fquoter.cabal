@@ -20,7 +20,7 @@ cabal-version:       >=1.10
 
 -- Library - for testing purposes
 library
-    ghc-options:        -W -Werror
+    ghc-options:        -Wall -Werror
     hs-source-dirs:     lib
     exposed-modules:    FQuoter.Quote
                        ,FQuoter.Updater

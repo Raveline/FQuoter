@@ -3,6 +3,7 @@ module FQuoter.Commands
 where
 
 import Database.HDBC hiding (execute)
+import Database.HDBC.Sqlite3
 import System.Console.Haskeline
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -50,6 +51,7 @@ handleUpdate _ _ _ _ _ = error "Not implemented yet."
 
 -- Perform an update action, commit and inform the user
 -- everything went fine.
+updateAndConfirm :: Config -> FalliableSerialization Connection IO a -> InputT IO()
 updateAndConfirm c f = do res <- liftIO $ execute c f 
                           commitAndSay (snd res) "Updated properly."
 
@@ -60,6 +62,9 @@ updateAndConfirm c f = do res <- liftIO $ execute c f
 -- and our Free Monad (see Serialize.Serialize).
 -- It then returns the result of the side effect, and the handler to
 -- the database so it can be easily commited or rolled-back.
+execute :: Config 
+           -> FalliableSerialization Connection IO a 
+           -> IO (Either DBError a, Connection)
 execute c f = do db <- accessDB c
                  res <- runExceptT $ runReaderT (process f) db
                  return (res, db)
@@ -83,10 +88,14 @@ deleteAndConfirm c t n = do result <- liftIO $ execute c (remove t n)
 
 -- Simple utility function to read a "y/n" choice from the user,
 -- using Haskeline.
+confirmed :: InputT IO Bool
 confirmed = do c <- getInputChar ""
                let c' = fromMaybe 'n' c
                return (c' == 'y')
 
+executeSearch :: Config 
+                 -> FalliableSerialization Connection IO [SerializedType] 
+                 -> InputT IO ()
 executeSearch c f = do result <- liftIO $ execute c f
                        case fst result of
                             Left _ -> error "Should not happen. I think ?"

@@ -37,12 +37,8 @@ command = choice [ insert
 --------------
 -- Utilities
 --------------
--- Shamelessly stolen from Christoph Schiessl's blog
-many1Till p end = do
-    notFollowedBy end
-    first <- p
-    rest <- manyTill p end
-    return (first:rest)
+many1Till :: GenParser t st a -> GenParser t st end -> GenParser t st [a]
+many1Till p end = liftM2 (:) p (manyTill p end)
 
 authorsList :: GenParser Char st [String]
 authorsList = specifically "by" *> (betweenQuotes <|> simpleString) `sepBy` (char ',' <* spaces)
@@ -81,6 +77,7 @@ specifically :: String -> GenParser Char st String
 specifically s = string s <* spaces
 
 {- Parse key values separated by columns and commas. -}
+variousValues :: GenParser Char st [(String, String)]
 variousValues = valuePair `sepBy` (char ',' <* spaces)
     where
         valuePair = (,) <$> simpleString <*> (char ':' *> simpleString)
@@ -88,11 +85,13 @@ variousValues = valuePair `sepBy` (char ',' <* spaces)
 --------------
 -- Insertion
 --------------
+insert :: GenParser Char st Action
 insert  = specifically "insert" >> choice [Insert <$> pAuthor
                                           ,Insert <$> pSource
                                           ,Insert <$> pQuote
                                           ,fail errorInsertNoType]
 
+find :: GenParser Char st Action
 find = (specifically "find" <|> specifically "search")
        >> choice [FindTags <$> betweenBrackets
                  ,FindWord <$> simpleString
@@ -101,6 +100,7 @@ find = (specifically "find" <|> specifically "search")
 -----------------
 -- Author parsing
 -----------------
+pAuthor :: GenParser Char st (Either NotDefinedType ParsedType)
 pAuthor = specifically "author"
           *>  option (Left NDAuthor) 
           (Right <$> (PAuthor <$> (try authorFullNameAndNick 
@@ -111,34 +111,40 @@ authorFromStringArray s
     | length s == 1 = Author Nothing Nothing (Just $ head s)
     | otherwise = Author (Just $ unwords . init $ s) (Just $ last s) Nothing
 
+authorFullNameOrNick :: GenParser Char st Author
 authorFullNameOrNick = do name <- words'
                           return $ authorFromStringArray name
 
-authorFullNameAndNick = do name <- words'                      
+authorFullNameAndNick :: GenParser Char st Author
+authorFullNameAndNick = do name <- words'
                            nickName <- akaPseudonym <|> betweenQuotes
                            return $ Author (Just $ unwords . init $ name) (Just $ last name) (Just nickName)
 
+akaPseudonym :: GenParser Char st String
 akaPseudonym = specifically "aka" >> simpleString
 
 -----------------
 -- Source parsing
 -----------------
+pSource :: GenParser Char st (Either NotDefinedType ParsedType)
 pSource = specifically "source"
           *> option (Left NDSource) (Right <$>
                             (PSource <$>
                             (ParserSource 
-                            <$> title
+                            <$> title'
                             <*> authorsList
                             <*> meta)))
           where
-            title = betweenQuotes <* spaces
+            title' = betweenQuotes <* spaces
             meta = option Map.empty parseMetadata
 
+parseMetadata :: GenParser Char st (Map.Map String String)
 parseMetadata = Map.fromList <$> between (char '{' <* spaces)(char '}' <* spaces) variousValues
 
 ----------------
 -- Quote parsing
 ----------------
+pQuote :: GenParser Char st (Either NotDefinedType ParsedType)
 pQuote = specifically "quote" <* spaces
          *> option (Left NDQuote) pQuote'
             where
@@ -149,25 +155,29 @@ pQuote = specifically "quote" <* spaces
                             <*> source 
                             <*> loc 
                             <*> tags 
-                            <*> authors 
+                            <*> authors'
                             <*> comment))
                 content = betweenQuotes <* spaces
                 source = specifically "in" *> (simpleString <|> betweenQuotes)
-                authors = option [] authorsList
+                authors' = option [] authorsList
                 tags = option [] (pTags <* spaces)
                 loc = option Nothing (pLocation <* spaces) 
                 comment = option Nothing (pComment <* spaces)
 
+pLocation :: GenParser Char st (Maybe String)
 pLocation = Just <$> (specifically "at" *> simpleString)
 
+pTags :: GenParser Char st [String]
 pTags = between (string "((" <* spaces) (string "))" <* spaces) (simpleString `sepBy` char ',')
 
+pComment :: GenParser Char st (Maybe String)
 pComment = Just <$> between (string "[[" <* spaces) (string "]]" <* spaces) (many $ noneOf "]")
 
 ------------
 -- Deletion
 ------------
 
+delete :: GenParser Char st Action
 delete = specifically "delete"  *> (Remove <$> pickType <*> (spaces *> many alphaNum))
 
 pickType :: GenParser Char st DBType
@@ -193,6 +203,7 @@ pickUpdate = choice [string "add" *> return Add
 pickProperty :: GenParser Char st TypeProperty
 pickProperty = choice [authorProperties, sourceProperties]
 
+authorProperties :: GenParser Char st TypeProperty
 authorProperties = ModifyAuthor <$> choice 
                     [(string "first name" *> return AuthorFirstName) <*> readOrNothing
                     ,(string "last name" *> return AuthorLastName) <*> readOrNothing

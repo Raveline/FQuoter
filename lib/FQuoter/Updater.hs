@@ -17,12 +17,12 @@ modifyAuthor :: Update -> AuthorProperty -> Author -> ParsedType
 modifyAuthor u p a = PAuthor $ modifyAuthor' u p a
     where
         modifyAuthor' :: Update -> AuthorProperty -> Author -> Author
-        modifyAuthor' Set (AuthorFirstName s) a = a { firstName = s }
-        modifyAuthor' Set (AuthorLastName s) a = a { lastName = s }
-        modifyAuthor' Set (AuthorNickName s) a = a { surname = s }
-        modifyAuthor' Delete (AuthorFirstName _) a = a { firstName = Nothing }
-        modifyAuthor' Delete (AuthorLastName _) a = a { lastName = Nothing }
-        modifyAuthor' Delete (AuthorNickName _) a = a { surname = Nothing }
+        modifyAuthor' Set (AuthorFirstName s) au = au { firstName = s }
+        modifyAuthor' Set (AuthorLastName s) au = au { lastName = s }
+        modifyAuthor' Set (AuthorNickName s) au = au { surname = s }
+        modifyAuthor' Delete (AuthorFirstName _) au = au { firstName = Nothing }
+        modifyAuthor' Delete (AuthorLastName _) au = au { lastName = Nothing }
+        modifyAuthor' Delete (AuthorNickName _) au = au { surname = Nothing }
         modifyAuthor' _ _ _ = error "Add is invalid for authors."
 
 modifySource :: Update -> SourceProperty -> ParsedType

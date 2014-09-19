@@ -64,6 +64,7 @@ getDissociate t1 t2 = queryFor $ QDissociate t1 t2
 getFullDissociate :: DBType -> DBType -> Query
 getFullDissociate t1 = head . splitOn "AND" . getDissociate t1
 
+getUpdate :: ParsedType -> Query
 getUpdate (PAuthor _) = queryFor (QUpdate DBAuthor)
 getUpdate (PSource _) = queryFor (QUpdate DBSource)
 getUpdate (PMetadataInfo _) = queryFor (QUpdate DBMetadataInfo)

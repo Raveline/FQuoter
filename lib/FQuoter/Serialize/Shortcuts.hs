@@ -60,8 +60,8 @@ one (the source's author or authors). Then, we need to make a
 specific object with the proper id of the source.
 And then, we need to associate authors and tags, through the
 proper tables, to this source. -}
-insert (PQuote pq@(ParserQuote _ source _ tags auths _)) =
-    do source <- getPrimaryKey DBSource source
+insert (PQuote pq@(ParserQuote _ src _ tags auths _)) =
+    do source <- getPrimaryKey DBSource src
        let insertableQuote = PLinkedQuote $ LinkedQuote pq source
        create insertableQuote
        idQuote <- lastInsert
@@ -112,9 +112,9 @@ searchTags ws = do v <- search DBQuote (ByIn ws)
 {- Insert metadatas. In the Metadata table, insert the value,
 and the primary key to the related Metadata Type and Source. -}
 insertMetadatas :: (Monad m) => PrimaryKey -> (String, String) -> FalliableSerialization r m ()
-insertMetadatas sourceId (info, value)
+insertMetadatas sourceId (info, val)
     = do pk <- readOrInsert DBMetadataInfo info
-         associate2 (pk, sourceId) (PMetadataValue value)
+         associate2 (pk, sourceId) (PMetadataValue val)
          return ()
 
 readOrInsert :: (Monad m) => DBType -> String -> FalliableSerialization r m PrimaryKey

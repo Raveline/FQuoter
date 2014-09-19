@@ -14,11 +14,13 @@ where
 import System.Console.Haskeline
 import Control.Monad (liftM)
 
+prompt :: String
 prompt = "> "
 
 getInputLine' :: String -> InputT IO String
 getInputLine' s = liftM nothingToEmpty (getInputLine s) 
 
+nothingToEmpty :: Maybe String -> String
 nothingToEmpty Nothing   = ""
 nothingToEmpty (Just s)  = s
 

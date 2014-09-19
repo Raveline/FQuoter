@@ -1,6 +1,7 @@
 module FQuoter.Serialize.Serialize 
 ( 
   SerializationF
+ ,SerializationT
  ,create
  ,associate
  ,associate2
@@ -183,12 +184,13 @@ queryLastInsert conn = do
 -- For a given search, put as many "%<search_term>%" as needed by
 -- the query
 searchArray :: String -> SearchTerm -> [SqlValue]
-searchArray query (ByName search) = replicate (paramNumber query) $ toSql $ "%" ++ search ++ "%"
+searchArray query (ByName s) = replicate (paramNumber query) 
+                                $ toSql $ "%" ++ s ++ "%"
     where 
         paramNumber = length . filter ('?' ==)
-searchArray _ (ById id) = [toSql id]
+searchArray _ (ById i) = [toSql i]
 searchArray _ (ByIn xs) = [toSql . intercalate "," $ xs]
-searchArray _ (ByAssociation _ id) = [toSql id]
+searchArray _ (ByAssociation _ i) = [toSql i]
 
 -- Convert an author to a list of SqlValue for insertion
 -- Create a new database from a schema.sql file
@@ -198,7 +200,7 @@ buildNewDB :: FilePath  -- Schema file
 buildNewDB schemaF toCreate = do
                                 conn <- connectSqlite3 toCreate
                                 commands <- readSchema schemaF
-                                mapM (flip (run conn) []) . init $ commands
+                                mapM_ (flip (run conn) []) . init $ commands
                                 commit conn
                                 disconnect conn
                                 return ()

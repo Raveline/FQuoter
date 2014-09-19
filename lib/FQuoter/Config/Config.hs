@@ -11,6 +11,7 @@ import Database.HDBC.Sqlite3
 import System.Directory
 import System.Environment.XDG.BaseDir (getUserDataDir)
 
+configFolder :: String
 configFolder = "fquoter"
 
 data Config = Config { currentDB :: FilePath
@@ -52,6 +53,6 @@ readConfig' :: FilePath -> IO Config
 readConfig' path = do
                  f <- readFile path
                  let fItems = map (splitOn ":") . lines $ f
-                 let currentDB = concat . tail . head $ fItems
-                 let currentTemplate = concat . tail . last $ fItems
-                 return $ Config currentDB currentTemplate 
+                 let db = concat . tail . head $ fItems
+                 let template = concat . tail . last $ fItems
+                 return $ Config db template 
