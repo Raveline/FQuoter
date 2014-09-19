@@ -1,7 +1,8 @@
 module FQuoter.Serialize.Serialize 
 ( 
-  SerializationF
+  SerializationF (..)
  ,SerializationT
+ ,Serialization
  ,create
  ,associate
  ,associate2
