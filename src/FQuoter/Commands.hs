@@ -16,7 +16,7 @@ import FQuoter.Parser.Parser
 import FQuoter.Parser.ParserTypes
 import FQuoter.Serialize.Shortcuts
 import FQuoter.Serialize.SerializedTypes
-import FQuoter.Serialize.Serialize
+import FQuoter.Serialize.Serialize hiding (Delete)
 import FQuoter.Config.Config
 import FQuoter.Repl.ReplUtils
 import FQuoter.Repl.ReplForms
