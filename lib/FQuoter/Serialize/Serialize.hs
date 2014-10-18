@@ -34,9 +34,6 @@ import FQuoter.Serialize.SerializedTypes
 import FQuoter.Serialize.Grouping
 import FQuoter.Serialize.Queries
 
---- UTITILITES
--- Make a Sqlvalue out of a Maybe String.
--- Nothing will be turned into an empty string
 data SerializationF next
     = Create ParsedType next
     | Associate PairOfTypes PairOfKeys next
